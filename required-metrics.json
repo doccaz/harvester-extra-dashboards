@@ -1,0 +1,375 @@
+[
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "VMs with CPU Ready > 5%",
+    "metrics": [
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Worst CPU Ready",
+    "metrics": [
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "VMs with guest memory > 90%",
+    "metrics": [
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_usable_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Max host memory PSI (some)",
+    "metrics": [
+      "node_pressure_memory_waiting_seconds_total",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Max host CPU PSI (some)",
+    "metrics": [
+      "node_pressure_cpu_waiting_seconds_total",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "OOM kills (1h)",
+    "metrics": [
+      "container_oom_events_total",
+      "node_uname_info",
+      "node_vmstat_oom_kill"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "CPU Ready % per VM (top N)",
+    "metrics": [
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "CPU usage % of allocated vCPUs (top N)",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "vCPU I/O wait per VM (top N)",
+    "metrics": [
+      "kubevirt_vmi_vcpu_seconds_total",
+      "kubevirt_vmi_vcpu_wait_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host CPU pressure (PSI) per node",
+    "metrics": [
+      "node_pressure_cpu_waiting_seconds_total",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "virt-launcher CFS throttling (top N)",
+    "metrics": [
+      "container_cpu_cfs_periods_total",
+      "container_cpu_cfs_throttled_periods_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Guest memory in use % (top N)",
+    "metrics": [
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_usable_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Guest swap activity (top N)",
+    "metrics": [
+      "kubevirt_vmi_memory_swap_"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Guest major page faults/s (top N)",
+    "metrics": [
+      "kubevirt_vmi_memory_pgmajfault_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Memory balloon (non-zero VMs)",
+    "metrics": [
+      "kubevirt_vmi_memory_actual_balloon_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "virt-launcher memory vs limit % (top N)",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "kube_pod_container_resource_limits"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host memory available %",
+    "metrics": [
+      "node_memory_",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host memory pressure (PSI) per node",
+    "metrics": [
+      "node_pressure_memory_stalled_seconds_total",
+      "node_pressure_memory_waiting_seconds_total",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host major faults/s and OOM kills",
+    "metrics": [
+      "node_uname_info",
+      "node_vmstat_oom_kill",
+      "node_vmstat_pgmajfault"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Read latency per VM disk (top N)",
+    "metrics": [
+      "kubevirt_vmi_storage_iops_read_total",
+      "kubevirt_vmi_storage_read_times_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Write latency per VM disk (top N)",
+    "metrics": [
+      "kubevirt_vmi_storage_iops_write_total",
+      "kubevirt_vmi_storage_write_times_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host I/O pressure (PSI) per node",
+    "metrics": [
+      "node_pressure_io_stalled_seconds_total",
+      "node_pressure_io_waiting_seconds_total",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Network drops/s per VM (top N)",
+    "metrics": [
+      "kubevirt_vmi_network_"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Network errors/s per VM (top N)",
+    "metrics": [
+      "kubevirt_vmi_network_"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "State",
+    "metrics": [
+      "kubevirt_vmi_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "vCPUs",
+    "metrics": [
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Memory",
+    "metrics": [
+      "kubevirt_vmi_memory_domain_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "CPU Ready",
+    "metrics": [
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Guest memory in use",
+    "metrics": [
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_usable_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Launcher mem vs limit",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "kube_pod_container_resource_limits"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "CPU usage % of vCPUs",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "CPU Ready %",
+    "metrics": [
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "vCPU I/O wait %",
+    "metrics": [
+      "kubevirt_vmi_vcpu_seconds_total",
+      "kubevirt_vmi_vcpu_wait_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Launcher CFS throttling %",
+    "metrics": [
+      "container_cpu_cfs_periods_total",
+      "container_cpu_cfs_throttled_periods_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Guest memory breakdown",
+    "metrics": [
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_cached_bytes",
+      "kubevirt_vmi_memory_unused_bytes",
+      "kubevirt_vmi_memory_usable_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Guest swap and major faults",
+    "metrics": [
+      "kubevirt_vmi_memory_pgmajfault_total",
+      "kubevirt_vmi_memory_swap_"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Launcher working set vs request/limit",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "kube_pod_container_resource_limits",
+      "kube_pod_container_resource_requests",
+      "kubevirt_vmi_launcher_memory_overhead_bytes",
+      "kubevirt_vmi_memory_resident_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "IOPS",
+    "metrics": [
+      "kubevirt_vmi_storage_iops_read_total",
+      "kubevirt_vmi_storage_iops_write_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Throughput",
+    "metrics": [
+      "kubevirt_vmi_storage_read_traffic_bytes_total",
+      "kubevirt_vmi_storage_write_traffic_bytes_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Latency per I/O",
+    "metrics": [
+      "kubevirt_vmi_storage_flush_requests_total",
+      "kubevirt_vmi_storage_flush_times_seconds_total",
+      "kubevirt_vmi_storage_iops_read_total",
+      "kubevirt_vmi_storage_iops_write_total",
+      "kubevirt_vmi_storage_read_times_seconds_total",
+      "kubevirt_vmi_storage_write_times_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Guest filesystem used %",
+    "metrics": [
+      "kubevirt_vmi_filesystem_capacity_bytes",
+      "kubevirt_vmi_filesystem_used_bytes"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Traffic",
+    "metrics": [
+      "kubevirt_vmi_network_receive_bytes_total",
+      "kubevirt_vmi_network_transmit_bytes_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Dropped packets/s",
+    "metrics": [
+      "kubevirt_vmi_network_"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Errors/s",
+    "metrics": [
+      "kubevirt_vmi_network_"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Node pressure (PSI)",
+    "metrics": [
+      "node_pressure_cpu_waiting_seconds_total",
+      "node_pressure_io_waiting_seconds_total",
+      "node_pressure_memory_waiting_seconds_total",
+      "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Node memory available %",
+    "metrics": [
+      "node_memory_",
+      "node_uname_info"
+    ]
+  }
+]
