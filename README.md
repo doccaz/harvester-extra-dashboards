@@ -3,9 +3,9 @@
 Extra Grafana dashboards for Harvester (SUSE Virtualization): VM contention dashboards.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that
-close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, memory and
-I/O pressure, storage latency. Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring`
-108.0.2+up77.9.1). Not yet run against a live cluster, see "Open items".
+close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, launcher OOM
+risk, storage latency (pressure/PSI panels are opt-in, see below). Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring`
+108.0.2+up77.9.1). Verified against a Harvester v1.8.2 lab (see "Live check"); not yet tested under load.
 
 | Dashboard (uid) | Answers |
 |---|---|
