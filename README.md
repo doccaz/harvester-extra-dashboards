@@ -1,4 +1,6 @@
-# Harvester VM contention dashboards
+# harvester-extra-dashboards
+
+Extra Grafana dashboards for Harvester (SUSE Virtualization): VM contention dashboards.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that
 close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, memory and
@@ -107,7 +109,7 @@ Harvester's OS kernel matches the SLES 16.0 behaviour; I did not find a Harveste
      - --collector.pressure
    ```
    (Applied and then reverted on the lab on 2026-10-06: it deploys cleanly, but with the kernel switch off it
-   yields no data. Original values are in `backups/rancher-monitoring-addon-2026-10-06.yaml`.)
+   yields no data. Back up the add-on `spec.valuesContent` before changing it.)
 5. `python3 generate.py --with-psi && ./apply.sh` adds the 10 PSI panels and tiles (per-VM ones from cAdvisor
    need only step 2; host-wide ones need step 4 too).
 
