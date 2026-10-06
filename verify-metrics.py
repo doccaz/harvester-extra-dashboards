@@ -48,7 +48,8 @@ checks = [
     ("guest agent memory (usable) reported", "count(kubevirt_vmi_memory_usable_bytes)"),
     ("launcher compute containers in cAdvisor", 'count(container_memory_working_set_bytes{container="compute",pod=~"virt-launcher-.*"})'),
     ("launcher memory limits in kube-state-metrics", 'count(kube_pod_container_resource_limits{resource="memory",container="compute",pod=~"virt-launcher-.*"})'),
-    ("node_uname_info joins node-exporter on instance", "count(node_pressure_cpu_waiting_seconds_total * on (instance) group_left (nodename) node_uname_info)"),
+    ("node_uname_info joins node-exporter on instance", "count(node_memory_MemAvailable_bytes * on (instance) group_left (nodename) node_uname_info)"),
+    ("cAdvisor PSI for launcher containers", 'count(container_pressure_memory_waiting_seconds_total{container="compute",pod=~"virt-launcher-.*"})'),
     ("CFS periods exposed for launcher", 'count(container_cpu_cfs_periods_total{container="compute",pod=~"virt-launcher-.*"})'),
     ("launcher OOM events exposed", 'count(container_oom_events_total{container="compute",pod=~"virt-launcher-.*"})'),
 ]

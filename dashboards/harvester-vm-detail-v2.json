@@ -930,7 +930,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(clamp_min(delta({__name__=~\"kubevirt_vmi_memory_swap_(in|out)_traffic_bytes\",namespace=\"$namespace\",name=\"$vm\"}[5m]), 0))",
+          "expr": "sum (clamp_min(delta(kubevirt_vmi_memory_swap_in_traffic_bytes{namespace=\"$namespace\",name=\"$vm\"}[5m]), 0)) + sum (clamp_min(delta(kubevirt_vmi_memory_swap_out_traffic_bytes{namespace=\"$namespace\",name=\"$vm\"}[5m]), 0))",
           "legendFormat": "swap bytes / 5m",
           "range": true,
           "instant": false
@@ -1580,7 +1580,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (interface) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)_packets_dropped_total\",namespace=\"$namespace\",name=\"$vm\"}[5m]))",
+          "expr": "sum by (interface) (rate(kubevirt_vmi_network_receive_packets_dropped_total{namespace=\"$namespace\",name=\"$vm\"}[5m])) + sum by (interface) (rate(kubevirt_vmi_network_transmit_packets_dropped_total{namespace=\"$namespace\",name=\"$vm\"}[5m]))",
           "legendFormat": "{{interface}}",
           "range": true,
           "instant": false
@@ -1651,7 +1651,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (interface) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)_errors_total\",namespace=\"$namespace\",name=\"$vm\"}[5m]))",
+          "expr": "sum by (interface) (rate(kubevirt_vmi_network_receive_errors_total{namespace=\"$namespace\",name=\"$vm\"}[5m])) + sum by (interface) (rate(kubevirt_vmi_network_transmit_errors_total{namespace=\"$namespace\",name=\"$vm\"}[5m]))",
           "legendFormat": "{{interface}}",
           "range": true,
           "instant": false
@@ -1702,7 +1702,7 @@
     },
     {
       "type": "row",
-      "title": "Host this VM runs on",
+      "title": "Pressure (PSI) and host this VM runs on",
       "collapsed": false,
       "id": 26,
       "gridPos": {
@@ -1715,8 +1715,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Node pressure (PSI)",
-      "description": "CPU, memory and I/O pressure of the hosting node ('some').",
+      "title": "VM cgroup pressure (PSI)",
+      "description": "% of time this VM's launcher cgroup stalled waiting for CPU, memory or I/O ('some'), from cAdvisor.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1724,9 +1724,110 @@
       "id": 27,
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 42
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * sum(rate(container_pressure_cpu_waiting_seconds_total{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m]))",
+          "legendFormat": "cpu",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * sum(rate(container_pressure_memory_waiting_seconds_total{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m]))",
+          "legendFormat": "memory",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * sum(rate(container_pressure_io_waiting_seconds_total{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m]))",
+          "legendFormat": "io",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node pressure (PSI) [needs node-exporter pressure collector]",
+      "description": "CPU, memory and I/O pressure of the hosting node ('some'). Empty unless node-exporter runs with --collector.pressure.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 28,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 50
       },
       "targets": [
         {
@@ -1822,12 +1923,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 28,
+      "id": 29,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 42
+        "y": 50
       },
       "targets": [
         {

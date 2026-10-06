@@ -60,6 +60,29 @@ def launcher_ws_pct():
         '/ on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory",%s}' % (LP, LP))
 
 
+def expand_alternation(pattern):
+    """'a_(x|y)_b' -> ['a_x_b', 'a_y_b'] (single group, as used in __name__ selectors)."""
+    m = re.search(r"\(([A-Za-z0-9_|]+)\)", pattern)
+    if not m:
+        return [pattern]
+    return [pattern[:m.start()] + alt + pattern[m.end():] for alt in m.group(1).split("|")]
+
+
+def pair(fn, a, b, flt, by="namespace, name", clamp=False):
+    """sum by (...) of fn(a) + fn(b), each over [5m]. Two names in one __name__ regex would make rate()
+    return identical labelsets (rate drops the name) and Prometheus rejects that with HTTP 422."""
+    def one(m):
+        e = "%s(%s%s[5m])" % (fn, m, flt)
+        return "sum%s (%s)" % (" by (%s)" % by if by else "", "clamp_min(%s, 0)" % e if clamp else e)
+    return "%s + %s" % (one(a), one(b))
+
+
+def launcher_psi(resource, kind="waiting", sel=None):
+    """% of time the VM's virt-launcher compute container stalled on `resource` (cgroup PSI, from cAdvisor)."""
+    return launcher_name('100 * sum by (namespace, pod) (rate(container_pressure_%s_%s_seconds_total{%s}[5m]))'
+                         % (resource, kind, sel or LP))
+
+
 def steps(*pairs):
     return [{"color": c, "value": v} for c, v in pairs]
 
@@ -104,8 +127,13 @@ class Dash:
         return pos
 
     def _record(self, title, desc, targets):
-        metrics = sorted({m for t in targets for m in re.findall(
-            r"\b((?:kubevirt|node|container|kube)_[a-z0-9_]+)", t[0])})
+        metrics = set()
+        for t in targets:
+            for pat in re.findall(r'__name__=~"([^"]+)"', t[0]):
+                metrics.update(expand_alternation(pat))
+            metrics.update(m for m in re.findall(r"\b((?:kubevirt|node|container|kube)_[A-Za-z0-9_]+)",
+                                                 re.sub(r'__name__=~"[^"]+"', "", t[0])))
+        metrics = sorted(metrics)
         self.manifest.append({"dashboard": self.d["uid"], "panel": title, "metrics": metrics})
 
     def ts(self, title, desc, targets, unit="short", w=8, h=8, minv=0, maxv=None, thr=None,
@@ -206,14 +234,13 @@ def contention():
     d.stat("VMs with guest memory > 90%", "VMs whose guest OS reports less than 10% memory available "
            "(MemAvailable, so page cache is NOT counted as used). Needs qemu-guest-agent.",
            "count((%s) > 90) or vector(0)" % guest_mem_pct(), thr=OK_WARN_BAD(1, 3))
-    d.stat("Max host memory PSI (some)", "Share of the last 5 minutes in which at least one task on the "
-           "node stalled waiting for memory (kernel PSI). Any sustained value means host memory contention.",
-           "max(100 * rate(node_pressure_memory_waiting_seconds_total[5m]) %s)" % NJ, unit="percent",
-           thr=OK_WARN_BAD(1, 10))
-    d.stat("Max host CPU PSI (some)", "Share of the last 5 minutes in which runnable tasks on the node "
-           "waited for a CPU (kernel PSI).",
-           "max(100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) %s)" % NJ, unit="percent",
-           thr=OK_WARN_BAD(10, 25))
+    d.stat("Max VM memory pressure (PSI)", "Highest share of the last 5 minutes in which a VM's launcher "
+           "cgroup stalled waiting for memory (kernel PSI via cAdvisor). Any sustained value means the VM is "
+           "being reclaimed or is thrashing on the host.",
+           "max(%s)" % launcher_psi("memory"), unit="percent", thr=OK_WARN_BAD(1, 10))
+    d.stat("Max VM CPU pressure (PSI)", "Highest share of the last 5 minutes in which a VM's launcher cgroup "
+           "waited for a CPU (PSI via cAdvisor): CPU limit throttling plus run-queue wait.",
+           "max(%s)" % launcher_psi("cpu"), unit="percent", thr=OK_WARN_BAD(10, 25))
     d.stat("OOM kills (1h)", "OOM kills on the nodes plus OOM events of virt-launcher compute containers "
            "in the last hour. A launcher OOM kill takes the VM down.",
            "sum(increase(node_vmstat_oom_kill[1h]) %s) + "
@@ -234,8 +261,13 @@ def contention():
          "(kubevirt_vmi_vcpu_wait_seconds_total). Not CPU steal: this points at storage.",
          [("topk($topn, 100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_wait_seconds_total%s[5m])) / %s)"
            % (F, vcpus()), "{{name}}")], unit="percent", link=True)
-    d.ts("Host CPU pressure (PSI) per node", "Kernel pressure-stall information: % of time tasks waited "
-         "for CPU. 'some' = at least one task stalled.",
+    d.ts("VM CPU pressure (PSI, top N)", "% of time the VM's launcher cgroup waited for CPU "
+         "(container_pressure_cpu_waiting_seconds_total). Complements CPU Ready with the host-cgroup view.",
+         [("topk($topn, %s)" % launcher_psi("cpu"), "{{name}}")], unit="percent",
+         thr=OK_WARN_BAD(10, 25), link=True)
+    d.ts("Host CPU pressure (PSI) per node [needs node-exporter pressure collector]", "Kernel "
+         "pressure-stall information: % of time tasks waited for CPU. Empty unless node-exporter runs with "
+         "--collector.pressure (off by default and not enabled by the Harvester add-on).",
          [("100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) %s" % NJ, "{{nodename}}")],
          unit="percent", thr=OK_WARN_BAD(10, 25))
     d.ts("virt-launcher CFS throttling (top N)", "% of scheduling periods in which the VM's launcher "
@@ -254,8 +286,7 @@ def contention():
     d.ts("Guest swap activity (top N)", "Change of the guest's swap-in + swap-out counters over 5 minutes "
          "(kubevirt_vmi_memory_swap_*_traffic_bytes are gauges). Any sustained value means the guest is "
          "short of memory. Equivalent of vSphere 'Swapped' but measured inside the guest.",
-         [("topk($topn, sum by (namespace, name) (clamp_min(delta({__name__=~\"kubevirt_vmi_memory_swap_(in|out)"
-           "_traffic_bytes\",namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m]), 0)))", "{{name}}")],
+         [("topk($topn, %s)" % pair("delta", "kubevirt_vmi_memory_swap_in_traffic_bytes", "kubevirt_vmi_memory_swap_out_traffic_bytes", F, clamp=True), "{{name}}")],
          unit="bytes", link=True)
     d.ts("Guest major page faults/s (top N)", "Page faults that needed disk I/O "
          "(kubevirt_vmi_memory_pgmajfault_total). Rising values mean the guest is thrashing.",
@@ -269,10 +300,15 @@ def contention():
          "memory limit. Near 100% means the launcher (guest RAM + QEMU overhead) is about to be OOM-killed.",
          [("topk($topn, %s)" % launcher_ws_pct(), "{{name}}")], unit="percent", maxv=110,
          thr=OK_WARN_BAD(90, 98), link=True)
+    d.ts("VM memory pressure (PSI, top N)", "% of time the VM's launcher cgroup stalled on memory: "
+         "'some' (waiting) per VM. Host-side memory contention as seen by each VM, available without the "
+         "node-exporter pressure collector.",
+         [("topk($topn, %s)" % launcher_psi("memory"), "{{name}}")], unit="percent",
+         thr=OK_WARN_BAD(1, 10), link=True)
     d.ts("Host memory available %", "MemAvailable / MemTotal per node.",
          [("(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) %s" % NJ, "{{nodename}}")],
          unit="percent", maxv=100, thr=steps(("red", None), ("orange", 10), ("green", 20)))
-    d.ts("Host memory pressure (PSI) per node", "'some': at least one task waited for memory; 'full': all "
+    d.ts("Host memory pressure (PSI) per node [needs node-exporter pressure collector]", "'some': at least one task waited for memory; 'full': all "
          "non-idle tasks stalled. This is the host-side memory contention signal.",
          [("100 * rate(node_pressure_memory_waiting_seconds_total[5m]) %s" % NJ, "{{nodename}} some"),
           ("100 * rate(node_pressure_memory_stalled_seconds_total[5m]) %s" % NJ, "{{nodename}} full")],
@@ -292,18 +328,22 @@ def contention():
          [("topk($topn, 1000 * rate(kubevirt_vmi_storage_write_times_seconds_total%s[5m]) "
            "/ (rate(kubevirt_vmi_storage_iops_write_total%s[5m]) > 0))" % (F, F), "{{name}} {{drive}}")],
          unit="ms", thr=OK_WARN_BAD(20, 50), link=True)
-    d.ts("Host I/O pressure (PSI) per node", "% of time tasks waited for block I/O on the node.",
+    d.ts("VM I/O pressure (PSI, top N)", "% of time the VM's launcher cgroup waited for block I/O.",
+         [("topk($topn, %s)" % launcher_psi("io"), "{{name}}")], unit="percent",
+         thr=OK_WARN_BAD(10, 30), link=True)
+    d.ts("Host I/O pressure (PSI) per node [needs node-exporter pressure collector]", "% of time tasks "
+         "waited for block I/O on the node.",
          [("100 * rate(node_pressure_io_waiting_seconds_total[5m]) %s" % NJ, "{{nodename}} some"),
           ("100 * rate(node_pressure_io_stalled_seconds_total[5m]) %s" % NJ, "{{nodename}} full")],
          unit="percent", thr=OK_WARN_BAD(10, 30))
     d.ts("Network drops/s per VM (top N)", "vNIC rx + tx dropped packets.",
-         [("topk($topn, sum by (namespace, name) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)"
-           "_packets_dropped_total\",namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])))",
-           "{{name}}")], unit="pps", link=True, w=12)
+         [("topk($topn, %s)" % pair("rate", "kubevirt_vmi_network_receive_packets_dropped_total",
+                                    "kubevirt_vmi_network_transmit_packets_dropped_total", F), "{{name}}")],
+         unit="pps", link=True, w=12)
     d.ts("Network errors/s per VM (top N)", "vNIC rx + tx errors.",
-         [("topk($topn, sum by (namespace, name) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)"
-           "_errors_total\",namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])))",
-           "{{name}}")], unit="pps", link=True, w=12)
+         [("topk($topn, %s)" % pair("rate", "kubevirt_vmi_network_receive_errors_total",
+                                    "kubevirt_vmi_network_transmit_errors_total", F), "{{name}}")],
+         unit="pps", link=True, w=12)
     return d
 
 
@@ -363,8 +403,8 @@ def detail():
           ("max(kubevirt_vmi_memory_cached_bytes%s)" % one, "page cache"),
           ("max(kubevirt_vmi_memory_unused_bytes%s)" % one, "free")], unit="bytes", w=8, fill=0)
     d.ts("Guest swap and major faults", "Swap traffic delta (gauge counters) and major page faults/s.",
-         [("sum(clamp_min(delta({__name__=~\"kubevirt_vmi_memory_swap_(in|out)_traffic_bytes\","
-           "namespace=\"$namespace\",name=\"$vm\"}[5m]), 0))", "swap bytes / 5m"),
+         [(pair("delta", "kubevirt_vmi_memory_swap_in_traffic_bytes",
+                "kubevirt_vmi_memory_swap_out_traffic_bytes", one, by="", clamp=True), "swap bytes / 5m"),
           ("sum(rate(kubevirt_vmi_memory_pgmajfault_total%s[5m]))" % one, "major faults/s")],
          unit="short", w=8)
     d.ts("Launcher working set vs request/limit", "Host-side memory of the launcher pod against what it is "
@@ -404,15 +444,23 @@ def detail():
           ("8 * sum by (interface) (rate(kubevirt_vmi_network_transmit_bytes_total%s[5m]))" % one,
            "tx {{interface}}")], unit="bps", w=8)
     d.ts("Dropped packets/s", "rx + tx drops.",
-         [("sum by (interface) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)_packets_dropped_total\","
-           "namespace=\"$namespace\",name=\"$vm\"}[5m]))", "{{interface}}")], unit="pps", w=8)
+         [(pair("rate", "kubevirt_vmi_network_receive_packets_dropped_total",
+                "kubevirt_vmi_network_transmit_packets_dropped_total", one, by="interface"), "{{interface}}")],
+         unit="pps", w=8)
     d.ts("Errors/s", "rx + tx errors.",
-         [("sum by (interface) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)_errors_total\","
-           "namespace=\"$namespace\",name=\"$vm\"}[5m]))", "{{interface}}")], unit="pps", w=8)
+         [(pair("rate", "kubevirt_vmi_network_receive_errors_total",
+                "kubevirt_vmi_network_transmit_errors_total", one, by="interface"), "{{interface}}")],
+         unit="pps", w=8)
 
-    d.row("Host this VM runs on")
+    d.row("Pressure (PSI) and host this VM runs on")
+    ps1 = lp1
+    d.ts("VM cgroup pressure (PSI)", "% of time this VM's launcher cgroup stalled waiting for CPU, memory "
+         "or I/O ('some'), from cAdvisor.",
+         [("100 * sum(rate(container_pressure_%s_waiting_seconds_total{%s}[5m]))" % (r, ps1), r)
+          for r in ("cpu", "memory", "io")], unit="percent", thr=OK_WARN_BAD(10, 25), w=24)
     nj1 = '* on (instance) group_left (nodename) node_uname_info{nodename="$node"}'
-    d.ts("Node pressure (PSI)", "CPU, memory and I/O pressure of the hosting node ('some').",
+    d.ts("Node pressure (PSI) [needs node-exporter pressure collector]", "CPU, memory and I/O pressure of "
+         "the hosting node ('some'). Empty unless node-exporter runs with --collector.pressure.",
          [("100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) %s" % nj1, "cpu"),
           ("100 * rate(node_pressure_memory_waiting_seconds_total[5m]) %s" % nj1, "memory"),
           ("100 * rate(node_pressure_io_waiting_seconds_total[5m]) %s" % nj1, "io")],

@@ -25,18 +25,16 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Max host memory PSI (some)",
+    "panel": "Max VM memory pressure (PSI)",
     "metrics": [
-      "node_pressure_memory_waiting_seconds_total",
-      "node_uname_info"
+      "container_pressure_memory_waiting_seconds_total"
     ]
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Max host CPU PSI (some)",
+    "panel": "Max VM CPU pressure (PSI)",
     "metrics": [
-      "node_pressure_cpu_waiting_seconds_total",
-      "node_uname_info"
+      "container_pressure_cpu_waiting_seconds_total"
     ]
   },
   {
@@ -74,7 +72,14 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host CPU pressure (PSI) per node",
+    "panel": "VM CPU pressure (PSI, top N)",
+    "metrics": [
+      "container_pressure_cpu_waiting_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host CPU pressure (PSI) per node [needs node-exporter pressure collector]",
     "metrics": [
       "node_pressure_cpu_waiting_seconds_total",
       "node_uname_info"
@@ -100,7 +105,8 @@
     "dashboard": "harvester-vm-contention-v1",
     "panel": "Guest swap activity (top N)",
     "metrics": [
-      "kubevirt_vmi_memory_swap_"
+      "kubevirt_vmi_memory_swap_in_traffic_bytes",
+      "kubevirt_vmi_memory_swap_out_traffic_bytes"
     ]
   },
   {
@@ -127,15 +133,23 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
+    "panel": "VM memory pressure (PSI, top N)",
+    "metrics": [
+      "container_pressure_memory_waiting_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
     "panel": "Host memory available %",
     "metrics": [
-      "node_memory_",
+      "node_memory_MemAvailable_bytes",
+      "node_memory_MemTotal_bytes",
       "node_uname_info"
     ]
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host memory pressure (PSI) per node",
+    "panel": "Host memory pressure (PSI) per node [needs node-exporter pressure collector]",
     "metrics": [
       "node_pressure_memory_stalled_seconds_total",
       "node_pressure_memory_waiting_seconds_total",
@@ -169,7 +183,14 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host I/O pressure (PSI) per node",
+    "panel": "VM I/O pressure (PSI, top N)",
+    "metrics": [
+      "container_pressure_io_waiting_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Host I/O pressure (PSI) per node [needs node-exporter pressure collector]",
     "metrics": [
       "node_pressure_io_stalled_seconds_total",
       "node_pressure_io_waiting_seconds_total",
@@ -180,14 +201,16 @@
     "dashboard": "harvester-vm-contention-v1",
     "panel": "Network drops/s per VM (top N)",
     "metrics": [
-      "kubevirt_vmi_network_"
+      "kubevirt_vmi_network_receive_packets_dropped_total",
+      "kubevirt_vmi_network_transmit_packets_dropped_total"
     ]
   },
   {
     "dashboard": "harvester-vm-contention-v1",
     "panel": "Network errors/s per VM (top N)",
     "metrics": [
-      "kubevirt_vmi_network_"
+      "kubevirt_vmi_network_receive_errors_total",
+      "kubevirt_vmi_network_transmit_errors_total"
     ]
   },
   {
@@ -282,7 +305,8 @@
     "panel": "Guest swap and major faults",
     "metrics": [
       "kubevirt_vmi_memory_pgmajfault_total",
-      "kubevirt_vmi_memory_swap_"
+      "kubevirt_vmi_memory_swap_in_traffic_bytes",
+      "kubevirt_vmi_memory_swap_out_traffic_bytes"
     ]
   },
   {
@@ -344,19 +368,30 @@
     "dashboard": "harvester-vm-detail-v2",
     "panel": "Dropped packets/s",
     "metrics": [
-      "kubevirt_vmi_network_"
+      "kubevirt_vmi_network_receive_packets_dropped_total",
+      "kubevirt_vmi_network_transmit_packets_dropped_total"
     ]
   },
   {
     "dashboard": "harvester-vm-detail-v2",
     "panel": "Errors/s",
     "metrics": [
-      "kubevirt_vmi_network_"
+      "kubevirt_vmi_network_receive_errors_total",
+      "kubevirt_vmi_network_transmit_errors_total"
     ]
   },
   {
     "dashboard": "harvester-vm-detail-v2",
-    "panel": "Node pressure (PSI)",
+    "panel": "VM cgroup pressure (PSI)",
+    "metrics": [
+      "container_pressure_cpu_waiting_seconds_total",
+      "container_pressure_io_waiting_seconds_total",
+      "container_pressure_memory_waiting_seconds_total"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Node pressure (PSI) [needs node-exporter pressure collector]",
     "metrics": [
       "node_pressure_cpu_waiting_seconds_total",
       "node_pressure_io_waiting_seconds_total",
@@ -368,7 +403,8 @@
     "dashboard": "harvester-vm-detail-v2",
     "panel": "Node memory available %",
     "metrics": [
-      "node_memory_",
+      "node_memory_MemAvailable_bytes",
+      "node_memory_MemTotal_bytes",
       "node_uname_info"
     ]
   }

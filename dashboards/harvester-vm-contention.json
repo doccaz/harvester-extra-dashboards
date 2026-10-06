@@ -373,8 +373,8 @@
     },
     {
       "type": "stat",
-      "title": "Max host memory PSI (some)",
-      "description": "Share of the last 5 minutes in which at least one task on the node stalled waiting for memory (kernel PSI). Any sustained value means host memory contention.",
+      "title": "Max VM memory pressure (PSI)",
+      "description": "Highest share of the last 5 minutes in which a VM's launcher cgroup stalled waiting for memory (kernel PSI via cAdvisor). Any sustained value means the VM is being reclaimed or is thrashing on the host.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -393,7 +393,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(100 * rate(node_pressure_memory_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"})",
+          "expr": "max(label_replace(100 * sum by (namespace, pod) (rate(container_pressure_memory_waiting_seconds_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m])), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
           "legendFormat": "",
           "range": false,
           "instant": true
@@ -438,8 +438,8 @@
     },
     {
       "type": "stat",
-      "title": "Max host CPU PSI (some)",
-      "description": "Share of the last 5 minutes in which runnable tasks on the node waited for a CPU (kernel PSI).",
+      "title": "Max VM CPU pressure (PSI)",
+      "description": "Highest share of the last 5 minutes in which a VM's launcher cgroup waited for a CPU (PSI via cAdvisor): CPU limit throttling plus run-queue wait.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -458,7 +458,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"})",
+          "expr": "max(label_replace(100 * sum by (namespace, pod) (rate(container_pressure_cpu_waiting_seconds_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m])), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
           "legendFormat": "",
           "range": false,
           "instant": true
@@ -816,8 +816,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Host CPU pressure (PSI) per node",
-      "description": "Kernel pressure-stall information: % of time tasks waited for CPU. 'some' = at least one task stalled.",
+      "title": "VM CPU pressure (PSI, top N)",
+      "description": "% of time the VM's launcher cgroup waited for CPU (container_pressure_cpu_waiting_seconds_total). Complements CPU Ready with the host-cgroup view.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -827,6 +827,91 @@
         "h": 8,
         "w": 8,
         "x": 8,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "topk($topn, label_replace(100 * sum by (namespace, pod) (rate(container_pressure_cpu_waiting_seconds_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m])), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
+          "legendFormat": "{{name}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open VM detail",
+              "url": "/d/harvester-vm-detail-v2?var-namespace=${__field.labels.namespace}&var-vm=${__field.labels.name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Host CPU pressure (PSI) per node [needs node-exporter pressure collector]",
+      "description": "Kernel pressure-stall information: % of time tasks waited for CPU. Empty unless node-exporter runs with --collector.pressure (off by default and not enabled by the Harvester add-on).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 13,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
         "y": 14
       },
       "targets": [
@@ -901,12 +986,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 13,
+      "id": 14,
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
-        "y": 14
+        "x": 0,
+        "y": 22
       },
       "targets": [
         {
@@ -982,12 +1067,12 @@
       "type": "row",
       "title": "Memory contention",
       "collapsed": false,
-      "id": 14,
+      "id": 15,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 30
       },
       "panels": []
     },
@@ -999,12 +1084,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 15,
+      "id": 16,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 23
+        "y": 31
       },
       "targets": [
         {
@@ -1085,12 +1170,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 16,
+      "id": 17,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 23
+        "y": 31
       },
       "targets": [
         {
@@ -1099,7 +1184,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk($topn, sum by (namespace, name) (clamp_min(delta({__name__=~\"kubevirt_vmi_memory_swap_(in|out)_traffic_bytes\",namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m]), 0)))",
+          "expr": "topk($topn, sum by (namespace, name) (clamp_min(delta(kubevirt_vmi_memory_swap_in_traffic_bytes{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m]), 0)) + sum by (namespace, name) (clamp_min(delta(kubevirt_vmi_memory_swap_out_traffic_bytes{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m]), 0)))",
           "legendFormat": "{{name}}",
           "range": true,
           "instant": false
@@ -1162,12 +1247,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 17,
+      "id": 18,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 23
+        "y": 31
       },
       "targets": [
         {
@@ -1239,12 +1324,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 18,
+      "id": 19,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 31
+        "y": 39
       },
       "targets": [
         {
@@ -1316,12 +1401,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 19,
+      "id": 20,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 31
+        "y": 39
       },
       "targets": [
         {
@@ -1396,18 +1481,103 @@
     },
     {
       "type": "timeseries",
+      "title": "VM memory pressure (PSI, top N)",
+      "description": "% of time the VM's launcher cgroup stalled on memory: 'some' (waiting) per VM. Host-side memory contention as seen by each VM, available without the node-exporter pressure collector.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 21,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 39
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "topk($topn, label_replace(100 * sum by (namespace, pod) (rate(container_pressure_memory_waiting_seconds_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m])), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
+          "legendFormat": "{{name}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open VM detail",
+              "url": "/d/harvester-vm-detail-v2?var-namespace=${__field.labels.namespace}&var-vm=${__field.labels.name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
       "title": "Host memory available %",
       "description": "MemAvailable / MemTotal per node.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 20,
+      "id": 22,
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
-        "y": 31
+        "x": 0,
+        "y": 47
       },
       "targets": [
         {
@@ -1476,18 +1646,18 @@
     },
     {
       "type": "timeseries",
-      "title": "Host memory pressure (PSI) per node",
+      "title": "Host memory pressure (PSI) per node [needs node-exporter pressure collector]",
       "description": "'some': at least one task waited for memory; 'full': all non-idle tasks stalled. This is the host-side memory contention signal.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 21,
+      "id": 23,
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
-        "y": 39
+        "x": 8,
+        "y": 47
       },
       "targets": [
         {
@@ -1572,12 +1742,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 22,
+      "id": 24,
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 8,
-        "y": 39
+        "x": 16,
+        "y": 47
       },
       "targets": [
         {
@@ -1650,12 +1820,12 @@
       "type": "row",
       "title": "Storage and network contention",
       "collapsed": false,
-      "id": 23,
+      "id": 25,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 55
       },
       "panels": []
     },
@@ -1667,12 +1837,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 24,
+      "id": 26,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 48
+        "y": 56
       },
       "targets": [
         {
@@ -1752,12 +1922,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 25,
+      "id": 27,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 48
+        "y": 56
       },
       "targets": [
         {
@@ -1831,18 +2001,103 @@
     },
     {
       "type": "timeseries",
-      "title": "Host I/O pressure (PSI) per node",
+      "title": "VM I/O pressure (PSI, top N)",
+      "description": "% of time the VM's launcher cgroup waited for block I/O.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 28,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 56
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "topk($topn, label_replace(100 * sum by (namespace, pod) (rate(container_pressure_io_waiting_seconds_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m])), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
+          "legendFormat": "{{name}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open VM detail",
+              "url": "/d/harvester-vm-detail-v2?var-namespace=${__field.labels.namespace}&var-vm=${__field.labels.name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Host I/O pressure (PSI) per node [needs node-exporter pressure collector]",
       "description": "% of time tasks waited for block I/O on the node.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 26,
+      "id": 29,
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
-        "y": 48
+        "x": 0,
+        "y": 64
       },
       "targets": [
         {
@@ -1927,12 +2182,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 27,
+      "id": 30,
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 56
+        "x": 8,
+        "y": 64
       },
       "targets": [
         {
@@ -1941,7 +2196,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk($topn, sum by (namespace, name) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)_packets_dropped_total\",namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])))",
+          "expr": "topk($topn, sum by (namespace, name) (rate(kubevirt_vmi_network_receive_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])))",
           "legendFormat": "{{name}}",
           "range": true,
           "instant": false
@@ -2004,12 +2259,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 28,
+      "id": 31,
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 56
+        "x": 0,
+        "y": 72
       },
       "targets": [
         {
@@ -2018,7 +2273,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk($topn, sum by (namespace, name) (rate({__name__=~\"kubevirt_vmi_network_(receive|transmit)_errors_total\",namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])))",
+          "expr": "topk($topn, sum by (namespace, name) (rate(kubevirt_vmi_network_receive_errors_total{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_errors_total{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}[5m])))",
           "legendFormat": "{{name}}",
           "range": true,
           "instant": false

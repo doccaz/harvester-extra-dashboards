@@ -49,15 +49,32 @@ python3 verify-metrics.py http://localhost:9090
   `available - unused`, which counts page cache as used, and `IO Time` plots the raw time counter, not a latency.
 - Prometheus in the add-on: scrape 1m, retention 5d / 50 GiB. Hence `[5m]` windows and no multi-week panels.
 
-## Open items (need the live cluster)
+## Live check (lab, Harvester v1.8.2, 2026-10-06)
 
-1. Run `verify-metrics.py`; panels listed as MISSING need either a different metric or removal.
-2. Confirm PSI is on (`node_pressure_*`) and that cAdvisor exposes `container_oom_events_total`.
-3. Confirm `kubevirt_vmi_vcpu_delay_seconds_total` is emitted (needs kernel schedstats) and that
-   `node_uname_info` joins on `instance`.
-4. The v1.8.2 installer's stock CPU panel divides `vcpu_seconds_total` by 1000 although the collector emits
-   seconds: check whether the stock panel under-reports CPU by 1000x (the script prints peak usage % as a sanity check).
-5. Guest-agent metrics (`usable`, filesystems) exist only for VMs running qemu-guest-agent.
+`verify-metrics.py` plus every panel query executed against the lab Prometheus: all return series or an
+empty result without errors, except the host-PSI panels below.
+
+- **Host PSI is absent.** node-exporter 1.9.1 runs without the pressure collector (off by default; the
+  add-on does not pass `--collector.pressure`), so no `node_pressure_*` series exist. The four host-PSI
+  panels are titled `[needs node-exporter pressure collector]` and stay empty until it is enabled
+  (`prometheus-node-exporter.extraArgs: [--collector.pressure]` in the `rancher-monitoring` add-on values;
+  not applied, it is a cluster change).
+- **Per-VM PSI works instead.** cAdvisor exposes `container_pressure_{cpu,memory,io}_*` for the
+  `virt-launcher` compute containers (kernel PSI is on), used for the "VM ... pressure (PSI)" panels and
+  overview tiles. There is no root-cgroup pressure, so no host-wide figure from cAdvisor.
+- `kubevirt_vmi_vcpu_delay_seconds_total` is emitted (67 series), so CPU Ready works.
+- Guest-agent memory, launcher limits, CFS and OOM counters, and `node_uname_info` joins on `instance` all work.
+- Fixed a bug the syntax check could not see: one `{__name__=~"a|b"}` selector under `rate()`/`delta()` makes
+  Prometheus return HTTP 422 (identical labelsets once the name is dropped). Now summed per metric (`pair()`).
+- **Stock CPU panel confirmed wrong:** for one VM the stock v1.8.2 expression (`.../ 1000`) gives 0.0000055
+  where the underlying rate is 0.0055. The collector emits seconds, so it under-reports by 1000x.
+- Lab was idle (PSI and CPU Ready near zero), so the contention thresholds are not yet exercised under load.
+
+## Open items
+
+1. Decide whether to enable the node-exporter pressure collector, then check the host-PSI panels.
+2. Load test one VM (CPU and memory stress) to see CPU Ready, PSI and guest memory panels react.
+3. Guest-agent metrics exist only for VMs running qemu-guest-agent (10 VMIs report `usable` here).
 
 ## Packaging as a Helm chart (later)
 
