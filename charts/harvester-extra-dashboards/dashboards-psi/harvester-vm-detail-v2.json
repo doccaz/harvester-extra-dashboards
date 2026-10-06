@@ -1817,8 +1817,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Node pressure (PSI) [needs node-exporter pressure collector]",
-      "description": "CPU, memory and I/O pressure of the hosting node ('some'). Empty unless node-exporter runs with --collector.pressure.",
+      "title": "Node pressure (PSI) [needs kernel PSI]",
+      "description": "CPU, memory and I/O pressure of the hosting node ('some'). Empty if that node's kernel boots without PSI (psi=1).",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"

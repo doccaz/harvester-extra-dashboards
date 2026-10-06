@@ -1032,8 +1032,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Host CPU pressure (PSI) per node [needs node-exporter pressure collector]",
-      "description": "Kernel pressure-stall information: % of time tasks waited for CPU. Empty unless node-exporter runs with --collector.pressure (off by default and not enabled by the Harvester add-on).",
+      "title": "Host CPU pressure (PSI) per node [needs kernel PSI]",
+      "description": "Kernel pressure-stall information: % of time tasks waited for CPU. Empty for nodes whose kernel boots without PSI (psi=1).",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1613,7 +1613,7 @@
     {
       "type": "timeseries",
       "title": "VM memory pressure (PSI, top N)",
-      "description": "% of time the VM's launcher cgroup stalled on memory: 'some' (waiting) per VM. Host-side memory contention as seen by each VM, available without the node-exporter pressure collector.",
+      "description": "% of time the VM's launcher cgroup stalled on memory: 'some' (waiting) per VM. Host-side memory contention as seen by each VM (cAdvisor; needs PSI on the node the VM runs on).",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1777,7 +1777,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Host memory pressure (PSI) per node [needs node-exporter pressure collector]",
+      "title": "Host memory pressure (PSI) per node [needs kernel PSI]",
       "description": "'some': at least one task waited for memory; 'full': all non-idle tasks stalled. This is the host-side memory contention signal.",
       "datasource": {
         "type": "prometheus",
@@ -2217,7 +2217,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Host I/O pressure (PSI) per node [needs node-exporter pressure collector]",
+      "title": "Host I/O pressure (PSI) per node [needs kernel PSI]",
       "description": "% of time tasks waited for block I/O on the node.",
       "datasource": {
         "type": "prometheus",

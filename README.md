@@ -143,18 +143,17 @@ comes from the code; the docs do not state it explicitly.)
    The older recipe of editing `grub.cfg` on `COS_STATE` (Harvester's
    [OS troubleshooting page](https://docs.harvesterhci.io/v1.8/troubleshooting/os/), labelled a workaround) is not
    needed for this.
-4. For the host-wide panels also enable the collector, since node-exporter has it off by default. In the
-   `rancher-monitoring` add-on `valuesContent` add under the existing `prometheus-node-exporter:` key:
-   ```
-   prometheus-node-exporter:
-     extraArgs:
-     - --collector.pressure
-   ```
-   (Applied and then reverted on the lab on 2026-10-06: it deploys cleanly, but with the kernel switch off it
-   yields no data. Back up the add-on `spec.valuesContent` before changing it.)
+4. Nothing to change in node-exporter. Its pressure collector is on by default and simply exports nothing while
+   `/proc/pressure` is missing; `node_pressure_*` appears as soon as a node boots with `psi=1`. (An earlier
+   version of this README said the collector had to be enabled in the add-on; that was wrong, see "Verified".)
 5. `helm upgrade harvester-extra-dashboards charts/harvester-extra-dashboards -n cattle-monitoring-system --set psi.enabled=true`
-   (or `./apply.sh --psi`) adds the 10 PSI panels and tiles (per-VM ones from cAdvisor need only step 2;
-   host-wide ones need step 4 too).
+   (or `./apply.sh --psi`) adds the 10 PSI panels and tiles. Each panel only has data for the nodes that already
+   run with `psi=1`.
+
+**Verified on one node (2026-10-06).** After setting `psi=1` on `harvlab-witness` only: `node_pressure_*` (5 series)
+and non-zero cAdvisor pressure appeared for that node within minutes, with no node-exporter change, while the other
+two nodes stayed at exactly 0. With the PSI variant installed the host panels showed that node (CPU "some" 2.2%,
+I/O "some" 38.7% / "full" 31.9%, memory 0); the per-VM panels stay at 0 until the nodes running the VMs are switched.
 
 ## Open items
 

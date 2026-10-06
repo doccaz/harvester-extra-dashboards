@@ -107,7 +107,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host CPU pressure (PSI) per node [needs node-exporter pressure collector]",
+    "panel": "Host CPU pressure (PSI) per node [needs kernel PSI]",
     "metrics": [
       "node_pressure_cpu_waiting_seconds_total",
       "node_uname_info"
@@ -186,7 +186,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host memory pressure (PSI) per node [needs node-exporter pressure collector]",
+    "panel": "Host memory pressure (PSI) per node [needs kernel PSI]",
     "metrics": [
       "node_pressure_memory_stalled_seconds_total",
       "node_pressure_memory_waiting_seconds_total",
@@ -232,7 +232,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host I/O pressure (PSI) per node [needs node-exporter pressure collector]",
+    "panel": "Host I/O pressure (PSI) per node [needs kernel PSI]",
     "metrics": [
       "node_pressure_io_stalled_seconds_total",
       "node_pressure_io_waiting_seconds_total",
@@ -457,7 +457,7 @@
   },
   {
     "dashboard": "harvester-vm-detail-v2",
-    "panel": "Node pressure (PSI) [needs node-exporter pressure collector]",
+    "panel": "Node pressure (PSI) [needs kernel PSI]",
     "metrics": [
       "node_pressure_cpu_waiting_seconds_total",
       "node_pressure_io_waiting_seconds_total",

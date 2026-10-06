@@ -290,9 +290,9 @@ def contention():
          "(container_pressure_cpu_waiting_seconds_total). Complements CPU Ready with the host-cgroup view.",
          [("topk($topn, %s)" % launcher_psi("cpu"), "{{name}}")], unit="percent",
          thr=OK_WARN_BAD(10, 25), link=True)
-    d.ts("Host CPU pressure (PSI) per node [needs node-exporter pressure collector]", "Kernel "
-         "pressure-stall information: % of time tasks waited for CPU. Empty unless node-exporter runs with "
-         "--collector.pressure (off by default and not enabled by the Harvester add-on).",
+    d.ts("Host CPU pressure (PSI) per node [needs kernel PSI]", "Kernel "
+         "pressure-stall information: % of time tasks waited for CPU. Empty for nodes "
+         "whose kernel boots without PSI (psi=1).",
          [("100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) %s" % NJ, "{{nodename}}")],
          unit="percent", thr=OK_WARN_BAD(10, 25))
     d.ts("virt-launcher CFS throttling (top N)", "% of scheduling periods in which the VM's launcher "
@@ -326,14 +326,14 @@ def contention():
          [("topk($topn, %s)" % launcher_ws_pct(), "{{name}}")], unit="percent", maxv=110,
          thr=OK_WARN_BAD(90, 98), link=True)
     d.ts("VM memory pressure (PSI, top N)", "% of time the VM's launcher cgroup stalled on memory: "
-         "'some' (waiting) per VM. Host-side memory contention as seen by each VM, available without the "
-         "node-exporter pressure collector.",
+         "'some' (waiting) per VM. Host-side memory contention as seen by each VM (cAdvisor; needs "
+         "PSI on the node the VM runs on).",
          [("topk($topn, %s)" % launcher_psi("memory"), "{{name}}")], unit="percent",
          thr=OK_WARN_BAD(1, 10), link=True)
     d.ts("Host memory available %", "MemAvailable / MemTotal per node.",
          [("(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) %s" % NJ, "{{nodename}}")],
          unit="percent", maxv=100, thr=steps(("red", None), ("orange", 10), ("green", 20)))
-    d.ts("Host memory pressure (PSI) per node [needs node-exporter pressure collector]", "'some': at least one task waited for memory; 'full': all "
+    d.ts("Host memory pressure (PSI) per node [needs kernel PSI]", "'some': at least one task waited for memory; 'full': all "
          "non-idle tasks stalled. This is the host-side memory contention signal.",
          [("100 * rate(node_pressure_memory_waiting_seconds_total[5m]) %s" % NJ, "{{nodename}} some"),
           ("100 * rate(node_pressure_memory_stalled_seconds_total[5m]) %s" % NJ, "{{nodename}} full")],
@@ -356,7 +356,7 @@ def contention():
     d.ts("VM I/O pressure (PSI, top N)", "% of time the VM's launcher cgroup waited for block I/O.",
          [("topk($topn, %s)" % launcher_psi("io"), "{{name}}")], unit="percent",
          thr=OK_WARN_BAD(10, 30), link=True)
-    d.ts("Host I/O pressure (PSI) per node [needs node-exporter pressure collector]", "% of time tasks "
+    d.ts("Host I/O pressure (PSI) per node [needs kernel PSI]", "% of time tasks "
          "waited for block I/O on the node.",
          [("100 * rate(node_pressure_io_waiting_seconds_total[5m]) %s" % NJ, "{{nodename}} some"),
           ("100 * rate(node_pressure_io_stalled_seconds_total[5m]) %s" % NJ, "{{nodename}} full")],
@@ -484,8 +484,8 @@ def detail():
          [("100 * sum(rate(container_pressure_%s_waiting_seconds_total{%s}[5m]))" % (r, ps1), r)
           for r in ("cpu", "memory", "io")], unit="percent", thr=OK_WARN_BAD(10, 25), w=24)
     nj1 = '* on (instance) group_left (nodename) node_uname_info{nodename="$node"}'
-    d.ts("Node pressure (PSI) [needs node-exporter pressure collector]", "CPU, memory and I/O pressure of "
-         "the hosting node ('some'). Empty unless node-exporter runs with --collector.pressure.",
+    d.ts("Node pressure (PSI) [needs kernel PSI]", "CPU, memory and I/O pressure of "
+         "the hosting node ('some'). Empty if that node's kernel boots without PSI (psi=1).",
          [("100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) %s" % nj1, "cpu"),
           ("100 * rate(node_pressure_memory_waiting_seconds_total[5m]) %s" % nj1, "memory"),
           ("100 * rate(node_pressure_io_waiting_seconds_total[5m]) %s" % nj1, "io")],

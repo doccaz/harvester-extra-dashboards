@@ -11,9 +11,9 @@ sidecar:
 
 psi:
   # -- Install the variant that also contains the pressure-stall (PSI) panels. Those panels only show data
-  # when PSI is enabled in the node kernel (SUSE kernels boot with it off unless `psi=1`) and, for the
-  # host-wide ones, node-exporter runs with --collector.pressure. See the README. Off by default so that
-  # stock Harvester does not get always-empty panels.
+  # when PSI is enabled in the node kernel (SUSE kernels boot with it off unless `psi=1`); per node, so a
+  # panel only shows the nodes that were switched. node-exporter needs no change. See the README. Off by
+  # default so that stock Harvester does not get always-empty panels.
   enabled: false
 
 dashboards:
