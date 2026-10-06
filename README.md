@@ -129,14 +129,22 @@ value and only appends `multipath=off` when absent, so the setting is carried ov
 comes from the code; the docs do not state it explicitly.)
 
 1. One node at a time: put it in maintenance mode from the Harvester UI.
-2. On the node (SSH), **list the current value first**. `set` replaces the whole variable, so keep what is there:
+2. On the node (SSH). `set` **replaces the whole variable**, and real nodes carry arguments you must not lose
+   (NIC-name pins such as `ifname=eno1:aa:bb:..`, `pcie_acs_override=`, `multipath=off`, `consoleblank=`).
+   So list first, then append `psi=1` to what is there:
    ```
-   grub2-editenv /oem/grubenv list
-   # third_party_kernel_args=multipath=off          <- example output; may be empty
-   grub2-editenv /oem/grubenv set third_party_kernel_args="multipath=off psi=1"
-   reboot
+   sudo grub2-editenv /oem/grubenv list            # look at it; keep a copy: sudo cat /oem/grubenv > ~/grubenv.bak
+   cur=$(sudo grub2-editenv /oem/grubenv list | sed -n 's/^third_party_kernel_args=//p')
+   case " $cur " in
+     *" psi="*) echo "psi already set: $cur" ;;
+     *)         sudo grub2-editenv /oem/grubenv set third_party_kernel_args="$cur psi=1" ;;
+   esac
+   sudo grub2-editenv /oem/grubenv list            # must show every original argument plus psi=1
+   sudo reboot
    ```
-   Then check `tr ' ' '\n' < /proc/cmdline | grep psi` and `cat /proc/pressure/memory`.
+   Do not paste a literal `set third_party_kernel_args="psi=1"` or `"multipath=off psi=1"`: on the lab nodes that
+   would have dropped the `ifname=` pins (and, on one, `pcie_acs_override`). After the reboot check that the NIC
+   names are unchanged, `tr ' ' '\n' < /proc/cmdline | grep psi`, and `ls /proc/pressure` (cpu io memory).
 3. Take the node out of maintenance mode, wait for it to be healthy, then repeat on the next node.
    For new installs, set `os.additionalKernelArguments: "psi=1"` in the install config
    ([reference](https://docs.harvesterhci.io/v1.8/install/harvester-configuration)); it ends up in the same variable.
