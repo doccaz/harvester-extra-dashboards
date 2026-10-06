@@ -9,6 +9,15 @@ Metric names/units were checked against the KubeVirt v1.7.4 source (see README.m
 import json
 import os
 import re
+import sys
+
+# Pressure (PSI) panels need kernel PSI enabled (SUSE kernels boot with it off unless psi=1; see README).
+# They are skipped unless generated with --with-psi, so the default dashboards contain no always-zero panels.
+WITH_PSI = "--with-psi" in sys.argv
+
+# Makes our dashboards stand out in the Grafana list next to the stock Harvester/Kubernetes ones.
+TITLE_PREFIX = "[SV+] "
+TAG = "sv-plus"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "dashboards")
@@ -93,7 +102,7 @@ OK_WARN_BAD = lambda w, b: steps(("green", None), ("orange", w), ("red", b))  # 
 class Dash:
     def __init__(self, uid, title, description, tags, variables, links=None):
         self.d = {
-            "uid": uid, "title": title, "description": description, "tags": tags,
+            "uid": uid, "title": TITLE_PREFIX + title, "description": description, "tags": tags + [TAG],
             "schemaVersion": 39, "version": 1, "editable": True, "graphTooltip": 1,
             "refresh": "1m", "time": {"from": "now-6h", "to": "now"},
             "timezone": "", "links": links or [],
@@ -138,6 +147,8 @@ class Dash:
 
     def ts(self, title, desc, targets, unit="short", w=8, h=8, minv=0, maxv=None, thr=None,
            link=False, stack=False, fill=10, legend=True):
+        if "PSI" in title and not WITH_PSI:
+            return
         self._record(title, desc, targets)
         defaults = {
             "unit": unit, "min": minv,
@@ -162,6 +173,8 @@ class Dash:
         })
 
     def stat(self, title, desc, expr, unit="short", w=4, h=4, thr=None, text="auto", legend=""):
+        if "PSI" in title and not WITH_PSI:
+            return
         self._record(title, desc, [(expr, legend)])
         self.d["panels"].append({
             "type": "stat", "title": title, "description": desc, "datasource": DS,
@@ -246,6 +259,15 @@ def contention():
            "sum(increase(node_vmstat_oom_kill[1h]) %s) + "
            "(sum(increase(container_oom_events_total{%s}[1h])) or vector(0))" % (NJ, LP),
            thr=steps(("green", None), ("red", 1)))
+
+    d.stat("VMs with launcher memory > 90% of limit", "VMs whose virt-launcher working set is above 90% "
+           "of its memory limit: OOM-kill risk for the VM.",
+           "count((%s) > 90) or vector(0)" % launcher_ws_pct(), thr=OK_WARN_BAD(1, 3))
+    d.stat("VMs CPU-throttled > 5%", "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
+           "count((%s) > 5) or vector(0)" % launcher_name(
+               '100 * sum by (namespace, pod) (rate(container_cpu_cfs_throttled_periods_total{%s}[5m])) '
+               '/ sum by (namespace, pod) (rate(container_cpu_cfs_periods_total{%s}[5m]))' % (LP, LP)),
+           thr=OK_WARN_BAD(1, 3))
 
     d.row("CPU contention")
     d.ts("CPU Ready % per VM (top N)", "Time vCPUs spent runnable but waiting for a physical CPU, as % of "
@@ -452,7 +474,7 @@ def detail():
                 "kubevirt_vmi_network_transmit_errors_total", one, by="interface"), "{{interface}}")],
          unit="pps", w=8)
 
-    d.row("Pressure (PSI) and host this VM runs on")
+    d.row("Host this VM runs on")
     ps1 = lp1
     d.ts("VM cgroup pressure (PSI)", "% of time this VM's launcher cgroup stalled waiting for CPU, memory "
          "or I/O ('some'), from cAdvisor.",
@@ -468,6 +490,9 @@ def detail():
     d.ts("Node memory available %", "MemAvailable / MemTotal of the hosting node.",
          [("(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) %s" % nj1, "available")],
          unit="percent", maxv=100, thr=steps(("red", None), ("orange", 10), ("green", 20)), w=12)
+    d.ts("Node major faults/s and OOM kills", "node_vmstat_pgmajfault rate and OOM kills of the hosting node.",
+         [("(rate(node_vmstat_pgmajfault[5m])) %s" % nj1, "major faults/s"),
+          ("(increase(node_vmstat_oom_kill[5m])) %s" % nj1, "OOM kills / 5m")], unit="short", w=12)
     return d
 
 

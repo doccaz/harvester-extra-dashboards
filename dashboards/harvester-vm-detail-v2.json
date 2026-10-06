@@ -1,11 +1,12 @@
 {
   "uid": "harvester-vm-detail-v2",
-  "title": "Harvester VM Info Detail v2",
+  "title": "[SV+] Harvester VM Info Detail v2",
   "description": "Single-VM view that complements the stock 'Harvester VM Info Detail': adds CPU Ready, honest guest memory (page cache not counted as used), launcher OOM risk, I/O latency and host pressure.",
   "tags": [
     "harvester",
     "kubevirt",
-    "vm"
+    "vm",
+    "sv-plus"
   ],
   "schemaVersion": 39,
   "version": 1,
@@ -1702,7 +1703,7 @@
     },
     {
       "type": "row",
-      "title": "Pressure (PSI) and host this VM runs on",
+      "title": "Host this VM runs on",
       "collapsed": false,
       "id": 26,
       "gridPos": {
@@ -1715,8 +1716,8 @@
     },
     {
       "type": "timeseries",
-      "title": "VM cgroup pressure (PSI)",
-      "description": "% of time this VM's launcher cgroup stalled waiting for CPU, memory or I/O ('some'), from cAdvisor.",
+      "title": "Node memory available %",
+      "description": "MemAvailable / MemTotal of the hosting node.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1724,211 +1725,9 @@
       "id": 27,
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
         "y": 42
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "100 * sum(rate(container_pressure_cpu_waiting_seconds_total{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m]))",
-          "legendFormat": "cpu",
-          "range": true,
-          "instant": false
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "100 * sum(rate(container_pressure_memory_waiting_seconds_total{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m]))",
-          "legendFormat": "memory",
-          "range": true,
-          "instant": false
-        },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "100 * sum(rate(container_pressure_io_waiting_seconds_total{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[5m]))",
-          "legendFormat": "io",
-          "range": true,
-          "instant": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "custom": {
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 10
-              },
-              {
-                "color": "red",
-                "value": 25
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Node pressure (PSI) [needs node-exporter pressure collector]",
-      "description": "CPU, memory and I/O pressure of the hosting node ('some'). Empty unless node-exporter runs with --collector.pressure.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "id": 28,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 50
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
-          "legendFormat": "cpu",
-          "range": true,
-          "instant": false
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "100 * rate(node_pressure_memory_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
-          "legendFormat": "memory",
-          "range": true,
-          "instant": false
-        },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "100 * rate(node_pressure_io_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
-          "legendFormat": "io",
-          "range": true,
-          "instant": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "custom": {
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 10
-              },
-              {
-                "color": "red",
-                "value": 25
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Node memory available %",
-      "description": "MemAvailable / MemTotal of the hosting node.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "id": 29,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 50
       },
       "targets": [
         {
@@ -1977,6 +1776,88 @@
             ]
           },
           "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node major faults/s and OOM kills",
+      "description": "node_vmstat_pgmajfault rate and OOM kills of the hosting node.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 28,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(rate(node_vmstat_pgmajfault[5m])) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "legendFormat": "major faults/s",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(increase(node_vmstat_oom_kill[5m])) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "legendFormat": "OOM kills / 5m",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },

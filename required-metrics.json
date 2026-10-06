@@ -25,25 +25,27 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Max VM memory pressure (PSI)",
-    "metrics": [
-      "container_pressure_memory_waiting_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
-    "panel": "Max VM CPU pressure (PSI)",
-    "metrics": [
-      "container_pressure_cpu_waiting_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
     "panel": "OOM kills (1h)",
     "metrics": [
       "container_oom_events_total",
       "node_uname_info",
       "node_vmstat_oom_kill"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "VMs with launcher memory > 90% of limit",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "kube_pod_container_resource_limits"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "VMs CPU-throttled > 5%",
+    "metrics": [
+      "container_cpu_cfs_periods_total",
+      "container_cpu_cfs_throttled_periods_total"
     ]
   },
   {
@@ -68,21 +70,6 @@
     "metrics": [
       "kubevirt_vmi_vcpu_seconds_total",
       "kubevirt_vmi_vcpu_wait_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
-    "panel": "VM CPU pressure (PSI, top N)",
-    "metrics": [
-      "container_pressure_cpu_waiting_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host CPU pressure (PSI) per node [needs node-exporter pressure collector]",
-    "metrics": [
-      "node_pressure_cpu_waiting_seconds_total",
-      "node_uname_info"
     ]
   },
   {
@@ -133,26 +120,10 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "VM memory pressure (PSI, top N)",
-    "metrics": [
-      "container_pressure_memory_waiting_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
     "panel": "Host memory available %",
     "metrics": [
       "node_memory_MemAvailable_bytes",
       "node_memory_MemTotal_bytes",
-      "node_uname_info"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host memory pressure (PSI) per node [needs node-exporter pressure collector]",
-    "metrics": [
-      "node_pressure_memory_stalled_seconds_total",
-      "node_pressure_memory_waiting_seconds_total",
       "node_uname_info"
     ]
   },
@@ -179,22 +150,6 @@
     "metrics": [
       "kubevirt_vmi_storage_iops_write_total",
       "kubevirt_vmi_storage_write_times_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
-    "panel": "VM I/O pressure (PSI, top N)",
-    "metrics": [
-      "container_pressure_io_waiting_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-contention-v1",
-    "panel": "Host I/O pressure (PSI) per node [needs node-exporter pressure collector]",
-    "metrics": [
-      "node_pressure_io_stalled_seconds_total",
-      "node_pressure_io_waiting_seconds_total",
-      "node_uname_info"
     ]
   },
   {
@@ -382,30 +337,20 @@
   },
   {
     "dashboard": "harvester-vm-detail-v2",
-    "panel": "VM cgroup pressure (PSI)",
-    "metrics": [
-      "container_pressure_cpu_waiting_seconds_total",
-      "container_pressure_io_waiting_seconds_total",
-      "container_pressure_memory_waiting_seconds_total"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-detail-v2",
-    "panel": "Node pressure (PSI) [needs node-exporter pressure collector]",
-    "metrics": [
-      "node_pressure_cpu_waiting_seconds_total",
-      "node_pressure_io_waiting_seconds_total",
-      "node_pressure_memory_waiting_seconds_total",
-      "node_uname_info"
-    ]
-  },
-  {
-    "dashboard": "harvester-vm-detail-v2",
     "panel": "Node memory available %",
     "metrics": [
       "node_memory_MemAvailable_bytes",
       "node_memory_MemTotal_bytes",
       "node_uname_info"
+    ]
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Node major faults/s and OOM kills",
+    "metrics": [
+      "node_uname_info",
+      "node_vmstat_oom_kill",
+      "node_vmstat_pgmajfault"
     ]
   }
 ]
