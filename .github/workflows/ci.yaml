@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: azure/setup-helm@v4
+      - name: Install Python dependencies
+        run: pip install promql-parser pyyaml
+      - name: Generated JSON is in sync with generate.py
+        run: |
+          python3 generate.py
+          git diff --exit-code -- charts required-metrics.json
+      - name: Validate dashboards and PromQL
+        run: python3 validate.py
+      - name: Helm lint and render tests
+        run: |
+          helm lint charts/harvester-extra-dashboards
+          python3 tests/chart_check.py

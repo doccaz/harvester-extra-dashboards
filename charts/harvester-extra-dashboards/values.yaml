@@ -1,0 +1,31 @@
+# Default values for harvester-extra-dashboards.
+
+# -- Namespace holding the dashboard ConfigMaps. Must be the namespace Grafana's sidecar watches:
+# `cattle-dashboards` for the Harvester rancher-monitoring add-on. The release itself can live elsewhere.
+dashboardsNamespace: cattle-dashboards
+
+sidecar:
+  # -- Label (and value) the Grafana dashboard sidecar selects ConfigMaps on
+  label: grafana_dashboard
+  labelValue: "1"
+
+psi:
+  # -- Install the variant that also contains the pressure-stall (PSI) panels. Those panels only show data
+  # when PSI is enabled in the node kernel (SUSE kernels boot with it off unless `psi=1`) and, for the
+  # host-wide ones, node-exporter runs with --collector.pressure. See the README. Off by default so that
+  # stock Harvester does not get always-empty panels.
+  enabled: false
+
+dashboards:
+  contention:
+    # -- "[SV+] Harvester VM Contention" (uid harvester-vm-contention-v1)
+    enabled: true
+  detail:
+    # -- "[SV+] Harvester VM Info Detail v2" (uid harvester-vm-detail-v2)
+    enabled: true
+
+# -- Extra labels added to every dashboard ConfigMap
+labels: {}
+# -- Extra annotations added to every dashboard ConfigMap (for example the sidecar's folder annotation,
+# if your Grafana sidecar is configured with `folderAnnotation`)
+annotations: {}

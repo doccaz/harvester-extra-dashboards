@@ -9,22 +9,54 @@ risk, storage latency (pressure/PSI panels are opt-in, see below). Target: **Har
 
 | Dashboard (uid) | Answers |
 |---|---|
-| **[SV+] Harvester VM Contention** (`harvester-vm-contention-v1`) | Which VMs/nodes are being starved right now: CPU Ready %, guest memory in use, swap/major faults, launcher OOM risk, host PSI (CPU/memory/I/O), read/write latency, network drops. Panels link to the detail dashboard. |
+| **[SV+] Harvester VM Contention** (`harvester-vm-contention-v1`) | Which VMs/nodes are being starved right now: CPU Ready %, guest memory in use, swap/major faults, launcher OOM risk, read/write latency, network drops (plus per-VM and host PSI panels in the `psi` variant). Panels link to the detail dashboard. |
 | **[SV+] Harvester VM Info Detail v2** (`harvester-vm-detail-v2`) | One VM end to end, plus the node it runs on. Adds what the stock `Harvester VM Info Detail` lacks. Own uid: the official `harvester-vm-*` dashboards are untouched. Both titles carry the `[SV+]` prefix and the `sv-plus` tag (`TITLE_PREFIX`/`TAG` in `generate.py`) to stand out from the stock ones. |
+
+## Install
+
+Needs the Harvester `rancher-monitoring` add-on enabled (Grafana's sidecar loads ConfigMaps labelled
+`grafana_dashboard=1` from `cattle-dashboards`). The chart only creates those ConfigMaps, no hooks, RBAC or images.
+
+```bash
+# from a clone of this repo
+helm install harvester-extra-dashboards charts/harvester-extra-dashboards \
+  --namespace cattle-monitoring-system
+
+# once the chart is released (see "Releasing")
+helm repo add harvester-extra-dashboards https://doccaz.github.io/harvester-extra-dashboards/
+helm install harvester-extra-dashboards harvester-extra-dashboards/harvester-extra-dashboards -n cattle-monitoring-system
+```
+
+Grafana loads them within about a minute: look for the `[SV+]` dashboards, or filter by the tag `sv-plus`.
+
+| Value | Default | |
+|---|---|---|
+| `psi.enabled` | `false` | Install the variant with the pressure (PSI) panels; needs kernel PSI, see below |
+| `dashboards.contention.enabled` / `dashboards.detail.enabled` | `true` | Install each dashboard |
+| `dashboardsNamespace` | `cattle-dashboards` | Namespace Grafana's sidecar watches |
+| `sidecar.label` / `sidecar.labelValue` | `grafana_dashboard` / `"1"` | Sidecar selector |
+| `labels`, `annotations` | `{}` | Extra metadata on the ConfigMaps (e.g. a sidecar folder annotation) |
+
+ConfigMaps are named `<release>-vm-contention` and `<release>-vm-detail-v2`. Do not mix the chart with
+`apply.sh` on the same cluster: both define the same dashboard uids (`./apply.sh --delete` first).
 
 ## Files
 
-- `generate.py`: source of truth (`--with-psi` adds the pressure panels, see below). Writes `dashboards/*.json` and `required-metrics.json` (per-panel list of metrics).
-- `validate.py`: offline checks (JSON, uids, variables, every PromQL expression parses). `pip install promql-parser`.
-- `verify-metrics.py`: **run when the lab is reachable.** Reports which panels lack metrics, plus the label/join assumptions.
-- `apply.sh`: loads the JSON as ConfigMaps (`grafana_dashboard=1`) in `cattle-dashboards`; `--delete` removes them.
+- `charts/harvester-extra-dashboards/`: the Helm chart. `dashboards/` and `dashboards-psi/` hold the generated JSON of the two variants.
+- `generate.py`: **source of truth.** Writes both variants into the chart and `required-metrics.json` (per-panel list of metrics; PSI-only panels are flagged). Do not edit the JSON by hand.
+- `validate.py`: offline checks of both variants (JSON, uids, variables, every PromQL expression parses, PSI variant is a superset). `pip install promql-parser`.
+- `tests/chart_check.py`: renders the chart in several configurations and asserts the ConfigMap content is byte-identical to the source JSON. `pip install pyyaml`; needs `helm`.
+- `verify-metrics.py`: run against a live Prometheus; reports which panels lack metrics, plus the label/join assumptions.
+- `apply.sh`: Helm-less alternative that loads the JSON as ConfigMaps; `--psi` selects the PSI variant, `--delete` removes them.
 
 ```
-python3 generate.py && python3 validate.py
+python3 generate.py && python3 validate.py && python3 tests/chart_check.py && helm lint charts/harvester-extra-dashboards
 kubectl -n cattle-monitoring-system port-forward svc/rancher-monitoring-prometheus 9090 &
 python3 verify-metrics.py http://localhost:9090
-./apply.sh
 ```
+
+CI (`.github/workflows/ci.yaml`) runs the same checks and fails if the committed JSON differs from what
+`generate.py` produces.
 
 ## vSphere to Harvester mapping used
 
@@ -110,8 +142,9 @@ Harvester's OS kernel matches the SLES 16.0 behaviour; I did not find a Harveste
    ```
    (Applied and then reverted on the lab on 2026-10-06: it deploys cleanly, but with the kernel switch off it
    yields no data. Back up the add-on `spec.valuesContent` before changing it.)
-5. `python3 generate.py --with-psi && ./apply.sh` adds the 10 PSI panels and tiles (per-VM ones from cAdvisor
-   need only step 2; host-wide ones need step 4 too).
+5. `helm upgrade harvester-extra-dashboards charts/harvester-extra-dashboards -n cattle-monitoring-system --set psi.enabled=true`
+   (or `./apply.sh --psi`) adds the 10 PSI panels and tiles (per-VM ones from cAdvisor need only step 2;
+   host-wide ones need step 4 too).
 
 ## Open items
 
@@ -119,10 +152,11 @@ Harvester's OS kernel matches the SLES 16.0 behaviour; I did not find a Harveste
 2. Load test one VM (CPU and memory stress) to see CPU Ready and guest memory react.
 3. Guest-agent metrics exist only for VMs running qemu-guest-agent (10 VMIs report `usable` here).
 
-## Packaging as a Helm chart (later)
+## Releasing
 
-Same idea as `suse-observability-genai-dashboards`, but simpler: no apply Job or RBAC, because Grafana's
-sidecar watches ConfigMaps. Planned layout: `charts/harvester-grafana-dashboards/{Chart.yaml,values.yaml,
-dashboards/*.json,templates/configmap-dashboards.yaml}`, one ConfigMap per dashboard from `.Files.Glob`,
-namespace `cattle-dashboards`, label `grafana_dashboard: "1"`. Keep the JSON out of `templates/` (and out of
-`tpl`): legends use `{{name}}`, which Helm would try to evaluate.
+`.github/workflows/release.yaml` runs [chart-releaser](https://github.com/helm/chart-releaser-action) on pushes
+that touch `charts/**` (same approach as `suse-observability-genai-dashboards`): it creates a GitHub release with
+the packaged chart and updates the Helm repository index on the `gh-pages` branch. Bump `version` in `Chart.yaml`
+for every chart change (`skip_existing` ignores versions already released). Prerequisites: a `gh-pages` branch must
+exist and GitHub Pages must serve it; for the `helm repo add` URL to work without credentials the repository has to
+be public.

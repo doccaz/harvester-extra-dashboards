@@ -1,0 +1,31 @@
+{{/*
+One ConfigMap per enabled dashboard. The JSON is read with .Files.Get and indented in verbatim, it is never
+passed through `tpl`: panel legends such as {{name}} must reach Grafana untouched.
+*/}}
+{{- $dir := include "harvester-extra-dashboards.dir" . }}
+{{- $items := list
+      (dict "name" "vm-contention" "file" "harvester-vm-contention.json" "enabled" .Values.dashboards.contention.enabled)
+      (dict "name" "vm-detail-v2" "file" "harvester-vm-detail-v2.json" "enabled" .Values.dashboards.detail.enabled) }}
+{{- range $item := $items }}
+{{- if $item.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-%s" $.Release.Name $item.name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ $.Values.dashboardsNamespace }}
+  labels:
+    {{- include "harvester-extra-dashboards.labels" $ | nindent 4 }}
+    {{ $.Values.sidecar.label }}: {{ $.Values.sidecar.labelValue | quote }}
+    {{- with $.Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $.Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{ $item.file }}: |-
+{{ required (printf "dashboard file %s/%s is missing from the chart" $dir $item.file) ($.Files.Get (printf "%s/%s" $dir $item.file)) | indent 4 }}
+{{- end }}
+{{- end }}

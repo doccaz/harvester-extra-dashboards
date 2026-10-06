@@ -5,7 +5,8 @@
     python3 verify-metrics.py http://localhost:9090
 
 Prints, per panel, the metrics that have no series, then the label/join assumptions the PromQL
-relies on. Exit code 1 if any panel is missing a metric. Standard library only.
+relies on. Exit code 1 if a default-variant panel is missing a metric
+(panels that exist only in the PSI variant are reported as PSI-ONLY and do not fail). Standard library only.
 """
 import json
 import os
@@ -35,7 +36,10 @@ present = {m: bool(query("count({__name__=\"%s\"})" % m)) for m in names}
 missing_total = 0
 for p in manifest:
     miss = [m for m in p["metrics"] if not present[m]]
-    if miss:
+    if miss and p.get("psi"):
+        print("PSI-ONLY %-28s %-40s %s  (only in the psi variant; needs kernel PSI)"
+              % (p["dashboard"][:28], p["panel"][:40], ", ".join(miss)))
+    elif miss:
         missing_total += 1
         print("MISSING  %-28s %-40s %s" % (p["dashboard"][:28], p["panel"][:40], ", ".join(miss)))
 print("\n%d metrics checked, %d absent, %d panels affected\n"

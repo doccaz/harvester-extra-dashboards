@@ -4,23 +4,25 @@
 Targets Harvester v1.8.2 = KubeVirt 1.7.4 + rancher-monitoring (kube-prometheus-stack).
 Metric names/units were checked against the KubeVirt v1.7.4 source (see README.md).
 
-    python3 generate.py          # writes dashboards/*.json and required-metrics.json
+    python3 generate.py   # writes charts/harvester-extra-dashboards/{dashboards,dashboards-psi}/*.json
+                          # and required-metrics.json
 """
 import json
 import os
 import re
-import sys
 
 # Pressure (PSI) panels need kernel PSI enabled (SUSE kernels boot with it off unless psi=1; see README).
-# They are skipped unless generated with --with-psi, so the default dashboards contain no always-zero panels.
-WITH_PSI = "--with-psi" in sys.argv
+# Two variants are generated: "dashboards" (no PSI panels, so no always-zero panels on stock Harvester) and
+# "dashboards-psi"; the Helm chart picks one with `psi.enabled`.
+WITH_PSI = False
 
 # Makes our dashboards stand out in the Grafana list next to the stock Harvester/Kubernetes ones.
 TITLE_PREFIX = "[SV+] "
 TAG = "sv-plus"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "dashboards")
+CHART = os.path.join(HERE, "charts", "harvester-extra-dashboards")
+OUT = {False: os.path.join(CHART, "dashboards"), True: os.path.join(CHART, "dashboards-psi")}
 
 DS = {"type": "prometheus", "uid": "${datasource}"}
 VM_LINK = {
@@ -143,7 +145,8 @@ class Dash:
             metrics.update(m for m in re.findall(r"\b((?:kubevirt|node|container|kube)_[A-Za-z0-9_]+)",
                                                  re.sub(r'__name__=~"[^"]+"', "", t[0])))
         metrics = sorted(metrics)
-        self.manifest.append({"dashboard": self.d["uid"], "panel": title, "metrics": metrics})
+        self.manifest.append({"dashboard": self.d["uid"], "panel": title, "metrics": metrics,
+                              "psi": "PSI" in title})
 
     def ts(self, title, desc, targets, unit="short", w=8, h=8, minv=0, maxv=None, thr=None,
            link=False, stack=False, fill=10, legend=True):
@@ -497,17 +500,23 @@ def detail():
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
+    global WITH_PSI
     manifest = []
-    for name, dash in (("harvester-vm-contention", contention()), ("harvester-vm-detail-v2", detail())):
-        with open(os.path.join(OUT, name + ".json"), "w") as f:
-            json.dump(dash.d, f, indent=2)
-            f.write("\n")
-        manifest += dash.manifest
+    for psi in (False, True):
+        WITH_PSI = psi
+        os.makedirs(OUT[psi], exist_ok=True)
+        panels = 0
+        for name, dash in (("harvester-vm-contention", contention()), ("harvester-vm-detail-v2", detail())):
+            with open(os.path.join(OUT[psi], name + ".json"), "w") as f:
+                json.dump(dash.d, f, indent=2)
+                f.write("\n")
+            panels += len(dash.manifest)
+            if psi:  # the PSI variant is a superset, so it describes every panel
+                manifest += dash.manifest
+        print("%-15s %d panels" % (os.path.basename(OUT[psi]), panels))
     with open(os.path.join(HERE, "required-metrics.json"), "w") as f:
         json.dump(manifest, f, indent=2)
         f.write("\n")
-    print("wrote %d panels" % len(manifest))
 
 
 if __name__ == "__main__":

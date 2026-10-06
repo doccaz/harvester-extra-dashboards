@@ -1,0 +1,20 @@
+Dashboard ConfigMaps were created in namespace "{{ .Values.dashboardsNamespace }}" with the label
+{{ .Values.sidecar.label }}="{{ .Values.sidecar.labelValue }}".
+
+Grafana's sidecar loads them within about a minute. Open Grafana (Harvester UI -> Monitoring -> Grafana) and
+look for the "[SV+]" dashboards, or filter by the tag "sv-plus":
+{{- if .Values.dashboards.contention.enabled }}
+  - [SV+] Harvester VM Contention
+{{- end }}
+{{- if .Values.dashboards.detail.enabled }}
+  - [SV+] Harvester VM Info Detail v2
+{{- end }}
+
+  kubectl -n {{ .Values.dashboardsNamespace }} get configmap -l app.kubernetes.io/instance={{ .Release.Name }}
+{{ if .Values.psi.enabled }}
+The pressure (PSI) panels are included. They stay empty unless PSI is enabled in the node kernel
+(`psi=1`; host-wide panels also need node-exporter's --collector.pressure). See the README.
+{{- else }}
+The variant without pressure (PSI) panels is installed. Enable it with --set psi.enabled=true once
+the nodes boot with `psi=1` (see the README).
+{{- end }}
