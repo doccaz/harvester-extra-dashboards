@@ -119,20 +119,30 @@ Harvester's OS kernel matches the SLES 16.0 behaviour; I did not find a Harveste
   enabling PSI adds no series, only less compressible values (my estimate: a few times that, tens of MB/day).
 
 **How to enable (not applied on the lab; the order matters).**
+
+Harvester has a supported, upgrade-safe place for extra kernel arguments: the GRUB variable
+`third_party_kernel_args` in `/oem/grubenv` (the persistent OEM partition). The v1.8.2 `bootargs.cfg` appends
+`$third_party_kernel_args` to the kernel command line, the install-time option `os.additionalKernelArguments`
+writes the same variable, and the [v1.6 to v1.7 upgrade notes](https://docs.harvesterhci.io/v1.7/upgrade/v1-6-x-to-v1-7-x/)
+use exactly this mechanism (for `ifname=` arguments). The upgrade script (`upgrade_node.sh`) reads the current
+value and only appends `multipath=off` when absent, so the setting is carried over on upgrades. (That last point
+comes from the code; the docs do not state it explicitly.)
+
 1. One node at a time: put it in maintenance mode from the Harvester UI.
-2. On the node, per the Harvester [OS troubleshooting page](https://docs.harvesterhci.io/v1.8/troubleshooting/os/)
-   (documented there as a *workaround*):
+2. On the node (SSH), **list the current value first**. `set` replaces the whole variable, so keep what is there:
    ```
-   mount -o remount,rw <COS_STATE device> /run/initramfs/cos-state     # the doc's example is /dev/vda2
-   vi /run/initramfs/cos-state/grub2/grub.cfg                           # append psi=1 to the "linux (loop0)$kernel $kernelcmd" line
+   grub2-editenv /oem/grubenv list
+   # third_party_kernel_args=multipath=off          <- example output; may be empty
+   grub2-editenv /oem/grubenv set third_party_kernel_args="multipath=off psi=1"
    reboot
    ```
-   Check the result with `cat /proc/pressure/memory`. The device name is not fixed on bare metal; look for the
-   partition labelled `COS_STATE`.
-3. Expect to repeat it after each Harvester upgrade: a `grub.cfg` edit is reported not to survive upgrades.
+   Then check `tr ' ' '\n' < /proc/cmdline | grep psi` and `cat /proc/pressure/memory`.
+3. Take the node out of maintenance mode, wait for it to be healthy, then repeat on the next node.
    For new installs, set `os.additionalKernelArguments: "psi=1"` in the install config
-   ([reference](https://docs.harvesterhci.io/v1.8/install/harvester-configuration)). I did not find a documented
-   persistent way for already-installed nodes (`/oem/grubenv` and the CloudInit CRD are unverified for this).
+   ([reference](https://docs.harvesterhci.io/v1.8/install/harvester-configuration)); it ends up in the same variable.
+   The older recipe of editing `grub.cfg` on `COS_STATE` (Harvester's
+   [OS troubleshooting page](https://docs.harvesterhci.io/v1.8/troubleshooting/os/), labelled a workaround) is not
+   needed for this.
 4. For the host-wide panels also enable the collector, since node-exporter has it off by default. In the
    `rancher-monitoring` add-on `valuesContent` add under the existing `prometheus-node-exporter:` key:
    ```
