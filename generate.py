@@ -220,7 +220,12 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
     for i, name in enumerate(list(labels.values()) + [c[1] for c in cols]):
         order[name] = i + 1
     for expr, header, unit, thr in cols:
-        props = [{"id": "unit", "value": unit}, {"id": "decimals", "value": 1 if unit in ("percent", "short") else 0}]
+        props = [{"id": "unit", "value": unit}]
+        if unit != "short":                    # counts and rates: let Grafana choose (2, not 2.0)
+            props.append({"id": "decimals", "value": 1 if unit == "percent" else 0})
+        if thr and thr[0]["color"] == "green" and thr[0]["value"] is None:
+            # a cell with no data takes the base colour: make that transparent so "n/a" is not painted "good"
+            thr = [{"color": "transparent", "value": None}, {"color": "green", "value": 0}] + thr[1:]
         if thr:
             props += [{"id": "thresholds", "value": {"mode": "absolute", "steps": thr}},
                       {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}}]
@@ -1199,7 +1204,7 @@ def whatif_panels(d):
            thr=steps(("red", None), ("orange", 1), ("green", 3)), w=6)
     d.stat("Disk full in (days)", "Linear forecast: days until Longhorn used space reaches usable capacity minus the "
            "minimal-available reserve at the growth rate of the look-back window. Blank when usage is not growing. Only "
-           "as good as the window (at most the 5 days Prometheus keeps).", DAYS_FULL, unit="d",
+           "as good as the window (at most the 5 days Prometheus keeps).", DAYS_FULL, unit="suffix: days",
            thr=steps(("red", None), ("orange", 30), ("green", 90)), w=6)
 
 
