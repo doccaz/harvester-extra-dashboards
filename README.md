@@ -55,7 +55,8 @@ ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<rele
 - `tests/chart_check.py`: renders the chart in several configurations and asserts the ConfigMap content is byte-identical to the source JSON, and that the alerts render with substituted thresholds and untouched `{{ $labels }}` templates. `pip install pyyaml`; needs `helm`.
 - `verify-metrics.py`: run against a live Prometheus; reports which panels lack metrics, plus the label/join assumptions.
 - `apply.sh`: Helm-less alternative that loads the dashboard JSON as ConfigMaps (not the alerts); `--psi` selects the PSI variant, `--delete` removes them.
-- `docs/alertmanager/`: how to email the alerts (a tested Alertmanager route and receiver, and an in-cluster mail catcher with persistent storage, a login and an Ingress). The default Harvester Alertmanager sends alerts nowhere.
+- `docs/alertmanager/`: how to email the alerts (a tested Alertmanager route and receiver). The default Harvester Alertmanager sends alerts nowhere.
+- `docs/mailpit/`: the lab's mail sink (Mailpit with persistent storage, two random logins and an Ingress) that makes the alert emails readable in a browser; manifest, install, operations and troubleshooting.
 
 ```
 python3 generate.py && python3 validate.py && python3 tests/chart_check.py && helm lint charts/harvester-extra-dashboards
@@ -102,7 +103,7 @@ default** because it starts firing in Alertmanager, whose routes decide who is n
 selects rules from every namespace, so no extra wiring is needed to see them in the Prometheus and Alertmanager UIs).
 Thresholds are values (`alerts.thresholds.*`); the rule text is never templated, so `{{ $labels.name }}` reaches
 Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver, so nobody is notified**: see
-[`docs/alertmanager/`](docs/alertmanager/README.md) for a tested email route and a mail catcher you can read in a browser.
+[`docs/alertmanager/`](docs/alertmanager/README.md) for a tested email route and [`docs/mailpit/`](docs/mailpit/README.md) for a mail sink you can read in a browser.
 
 | Group | Alerts |
 |---|---|
