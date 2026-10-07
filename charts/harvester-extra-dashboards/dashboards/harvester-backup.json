@@ -1,0 +1,1444 @@
+{
+  "uid": "harvester-backup-v1",
+  "title": "[SV+] Harvester Backup & Protection",
+  "description": "Which VM disks are protected by Longhorn backups, how stale those backups are, how much data has never been backed up, and how much space snapshots hold. Harvester 1.8.x / Longhorn.",
+  "tags": [
+    "harvester",
+    "kubevirt",
+    "backup",
+    "sv-plus"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "",
+  "links": [
+    {
+      "title": "Capacity & Reclaim",
+      "type": "link",
+      "url": "/d/harvester-capacity-v1",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "VM Scorecard",
+      "type": "link",
+      "url": "/d/harvester-vm-scorecard-v1",
+      "icon": "external link",
+      "targetBlank": false
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "datasource",
+        "label": "Data source",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "namespace",
+        "label": "Namespace",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kubevirt_vm_info, namespace)",
+        "query": {
+          "query": "label_values(kubevirt_vm_info, namespace)",
+          "refId": "namespace"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "hide": 0,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "type": "textbox",
+        "name": "rpo_days",
+        "label": "Backup considered stale after (days)",
+        "query": "7",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "7",
+          "value": "7"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "7",
+            "value": "7"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Protection (every VM that has disks, running or not)",
+      "collapsed": false,
+      "id": 1,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "VMs with disks",
+      "description": "VMs with at least one Longhorn volume.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 2,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at * 0 + 1), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fully protected VMs",
+      "description": "VMs whose volumes all have a backup newer than the stale threshold.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 3,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count((sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at == bool 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))) == 0 and on (namespace, name) (sum by (namespace, name) (label_replace(label_replace((((time() - longhorn_volume_last_backup_at) / 86400 > bool $rpo_days) and longhorn_volume_last_backup_at > 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))) == 0) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "VMs not protected",
+      "description": "VMs with at least one volume that has never been backed up.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 4,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count((sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at == bool 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))) > 0) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "VMs with stale backup",
+      "description": "VMs with a backed-up volume whose last backup is older than the threshold.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 5,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count((sum by (namespace, name) (label_replace(label_replace((((time() - longhorn_volume_last_backup_at) / 86400 > bool $rpo_days) and longhorn_volume_last_backup_at > 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))) > 0) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Unprotected data",
+      "description": "Actual size of the volumes that have never been backed up (one replica).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 6,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(sum by (namespace, name) (label_replace(label_replace((max by (volume, pvc, pvc_namespace) (longhorn_volume_actual_size_bytes) and on (volume) (longhorn_volume_last_backup_at == 0)), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Backups in error",
+      "description": "Longhorn backups in state Error (longhorn_backup_state = 4).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 7,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(longhorn_backup_state == 4) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Space held by snapshots and backups",
+      "collapsed": false,
+      "id": 8,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Snapshot space",
+      "description": "Space used by all Longhorn snapshots, one replica. Snapshots are not backups: they live on the same disks and grow with changed data.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 9,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_snapshot_actual_size_bytes)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "User snapshots",
+      "description": "Snapshots created by a user or by VM snapshot/backup jobs (not Longhorn's own).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 10,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(longhorn_snapshot_actual_size_bytes{user_created=\"true\"}) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Snapshots / disk used",
+      "description": "Snapshot space as % of the Longhorn disk space in use. A high share is reclaimable space once the snapshots are no longer needed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 11,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * sum(longhorn_snapshot_actual_size_bytes) / sum(longhorn_node_storage_usage_bytes)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Backup storage",
+      "description": "Size of the backups in the backup target.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 12,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_backup_actual_size_bytes)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Snapshot space over time",
+      "description": "By who created the snapshots.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 13,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (user_created) (longhorn_snapshot_actual_size_bytes)",
+          "legendFormat": "user_created={{user_created}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Backup storage over time",
+      "description": "Total size of the Longhorn backups.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 14,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_backup_actual_size_bytes)",
+          "legendFormat": "backups",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Per VM",
+      "collapsed": false,
+      "id": 15,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Backup status per VM",
+      "description": "Newest/oldest = age in days of the last backup of the VM's backed-up volumes. 'Never' counts volumes with no backup at all. Snapshot columns show the space and the number of user-created snapshots on the VM's volumes.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 16,
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at * 0 + 1), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at == bool 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(label_replace((((time() - longhorn_volume_last_backup_at) / 86400 > bool $rpo_days) and longhorn_volume_last_backup_at > 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "min by (namespace, name) (label_replace(label_replace(((time() - longhorn_volume_last_backup_at) / 86400 and longhorn_volume_last_backup_at > 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max by (namespace, name) (label_replace(label_replace(((time() - longhorn_volume_last_backup_at) / 86400 and longhorn_volume_last_backup_at > 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(label_replace((max by (volume, pvc, pvc_namespace) (longhorn_volume_actual_size_bytes) and on (volume) (longhorn_volume_last_backup_at == 0)), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(label_replace((sum by (volume) (longhorn_snapshot_actual_size_bytes) * on (volume) group_left (pvc, pvc_namespace) (max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1)), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(label_replace((count by (volume) (longhorn_snapshot_actual_size_bytes{user_created=\"true\"}) * on (volume) group_left (pvc, pvc_namespace) (max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1)), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\"}) * 0 + 1))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "name": "VM",
+              "Value #A": "Volumes",
+              "Value #B": "Never backed up",
+              "Value #C": "Stale",
+              "Value #D": "Newest (d)",
+              "Value #E": "Oldest (d)",
+              "Value #F": "Unprotected",
+              "Value #G": "Snapshots",
+              "Value #H": "User snaps"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Namespace": 1,
+              "VM": 2,
+              "Volumes": 3,
+              "Never backed up": 4,
+              "Stale": 5,
+              "Newest (d)": 6,
+              "Oldest (d)": 7,
+              "Unprotected": 8,
+              "Snapshots": 9,
+              "User snaps": 10
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true,
+            "minWidth": 60,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Volumes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Never backed up"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Stale"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Newest (d)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 3
+                    },
+                    {
+                      "color": "red",
+                      "value": 7
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Oldest (d)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 3
+                    },
+                    {
+                      "color": "red",
+                      "value": 7
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unprotected"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Snapshots"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "User snaps"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open VM detail",
+                    "url": "/d/harvester-vm-detail-v2?var-namespace=${__data.fields.Namespace}&var-vm=${__value.text}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Unprotected",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Largest snapshot consumers (any volume)",
+      "description": "PVCs by space held by their snapshots, including volumes that belong to no VM.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 17,
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "topk(15, sum by (pvc_namespace, pvc) ((sum by (volume) (longhorn_snapshot_actual_size_bytes) * on (volume) group_left (pvc, pvc_namespace) (max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1))))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (pvc_namespace, pvc) ((count by (volume) (longhorn_snapshot_actual_size_bytes{user_created=\"true\"}) * on (volume) group_left (pvc, pvc_namespace) (max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1))) and on (pvc_namespace, pvc) topk(15, sum by (pvc_namespace, pvc) ((sum by (volume) (longhorn_snapshot_actual_size_bytes) * on (volume) group_left (pvc, pvc_namespace) (max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1))))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
+            },
+            "renameByName": {
+              "pvc_namespace": "Namespace",
+              "pvc": "PVC",
+              "Value #A": "Snapshot space",
+              "Value #B": "User snaps"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Namespace": 1,
+              "PVC": 2,
+              "Snapshot space": 3,
+              "User snaps": 4
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true,
+            "minWidth": 60,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Snapshot space"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "User snaps"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Snapshot space",
+            "desc": true
+          }
+        ]
+      }
+    }
+  ]
+}

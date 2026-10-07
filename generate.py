@@ -788,7 +788,17 @@ def capacity():
         ["harvester", "kubevirt", "capacity"],
         [var_ds(),
          var_query("namespace", "Namespace", "label_values(kubevirt_vm_info, namespace)", all_value=".*"),
-         var_window()],
+         var_window(),
+         var_text("target", "Sizing target % (CPU)", "70"),
+         var_text("wi_vcpu", "What-if VM: vCPUs", "4"),
+         var_text("wi_mem", "What-if VM: memory GiB", "8"),
+         var_text("wi_disk", "What-if VM: disk GiB", "100"),
+         var_text("wi_replicas", "What-if: Longhorn replicas", "2"),
+         var_text("wi_fill", "What-if: new disk fill %", "50"),
+         var_text("wi_overcommit", "Harvester memory overcommit (x)", "1.75"),
+         var_text("wi_overhead", "QEMU overhead per VM GiB", "0.5"),
+         var_text("wi_overprov", "Longhorn over-provisioning %", "200"),
+         var_text("wi_minfree", "Longhorn minimal available %", "20")],
         links=[{"title": "Right-Sizing", "type": "link", "url": "/d/harvester-rightsizing-v1",
                 "icon": "external link", "targetBlank": False},
                {"title": "VM Contention", "type": "link", "url": "/d/harvester-vm-contention-v1",
@@ -824,6 +834,8 @@ def capacity():
          "allocatable memory.",
          [(MEM_BY_NODE, "{{node}} allocated to VMs"), (hosts(ALLOC_MEM), "{{node}} allocatable")],
          unit="bytes", w=12, fill=0)
+
+    whatif_panels(d)
 
     d.row("Host utilisation")
     d.ts("Host CPU utilisation", "% of CPU time not idle, per node.", [(HOST_CPU, "{{nodename}}")],
@@ -995,6 +1007,7 @@ ALERT_TOKENS = {  # token -> (values key, default)
     "HOST_REQ_MEM": ("hostMemoryRequestsPercent", 90), "LH_SCHED_WARN": ("longhornScheduledWarn", 90),
     "LH_SCHED_CRIT": ("longhornScheduledCritical", 100), "LH_NODE_USED": ("longhornNodeUsedPercent", 80),
     "DISK_AWAIT_MS": ("diskAwaitMs", 50), "DISK_UTIL": ("diskUtilPercent", 95),
+    "BACKUP_MAX_AGE_DAYS": ("backupMaxAgeDays", 7), "SNAPSHOT_SPACE_PCT": ("snapshotSpacePercent", 50),
 }
 NODE_NAME = "* on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)"
 
@@ -1106,7 +1119,161 @@ def alert_rules():
                  "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is faulted",
                  "Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) has no healthy replica."),
         ]},
+        {"name": "harvester-extra.backups-and-snapshots", "rules": [
+            rule("HarvesterBackupStale",
+                 "((time() - longhorn_volume_last_backup_at) / 86400 > __BACKUP_MAX_AGE_DAYS__) and longhorn_volume_last_backup_at > 0",
+                 "1h", "warning", "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} has a stale backup",
+                 "The last backup of volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) is "
+                 "{{ $value | printf \"%.1f\" }} days old (above __BACKUP_MAX_AGE_DAYS__). Volumes that were never backed "
+                 "up are not alerted on, see the Backup & Protection dashboard."),
+            rule("HarvesterBackupError", "longhorn_backup_state == 4", "0m", "warning",
+                 "A Longhorn backup of volume {{ $labels.volume }} failed",
+                 "Backup {{ $labels.backup }} of volume {{ $labels.volume }} is in state Error."),
+            rule("HarvesterSnapshotSpaceHigh",
+                 "(100 * sum(longhorn_snapshot_actual_size_bytes) / sum(longhorn_node_storage_usage_bytes)) > __SNAPSHOT_SPACE_PCT__",
+                 "6h", "warning", "Snapshots hold a large share of the Longhorn disk space",
+                 "Snapshots use {{ $value | printf \"%.0f\" }}% of the used Longhorn disk space (above __SNAPSHOT_SPACE_PCT__%). "
+                 "They are not backups; delete the ones nobody needs."),
+        ]},
     ]}
+
+
+# --------------------------------------------------------------------------- what-if (capacity) and backups
+VCPU_ALL = "count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))"
+HOST_ALLOC_CPU, BIG_CPU = "sum(%s)" % hosts(ALLOC_CPU), "max(%s)" % hosts(ALLOC_CPU)
+HOST_ALLOC_MEM, BIG_MEM, REQ_ALL = "sum(%s)" % hosts(ALLOC_MEM), "max(%s)" % hosts(ALLOC_MEM), "sum(%s)" % hosts(REQ_MEM)
+# non-idle CPU cores of the hosts (witness excluded)
+HOST_CPU_USED = ('sum(sum by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m])) * on (instance) group_left '
+                 '(nodename) max by (instance, nodename) (node_uname_info) unless on (nodename) '
+                 'label_replace(%s, "nodename", "$1", "node", "(.*)"))' % WITNESS)
+CPU_USED_P95 = "quantile_over_time(0.95, (%s)[$window:5m])" % HOST_CPU_USED
+PER_VCPU = "clamp_min(sum(rate(kubevirt_vmi_cpu_usage_seconds_total[5m])) / sum(%s), 0.01)" % VCPU_ALL
+VM_REQ_BYTES = "(($wi_mem / $wi_overcommit + $wi_overhead) * %d)" % GIB
+LH_USABLE = "sum(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes)"
+LH_SCHED = "sum(longhorn_node_storage_scheduled_bytes)"
+LH_USED = "sum(longhorn_node_storage_usage_bytes)"
+WI_DISK_BYTES = "($wi_disk * %d * $wi_replicas)" % GIB
+
+FIT_MEM_NOW = "clamp_min(floor((%s - %s) / %s), 0)" % (HOST_ALLOC_MEM, REQ_ALL, VM_REQ_BYTES)
+FIT_MEM_N1 = "clamp_min(floor((%s - %s - %s) / %s), 0)" % (HOST_ALLOC_MEM, BIG_MEM, REQ_ALL, VM_REQ_BYTES)
+FIT_CPU_NOW = ("clamp_min(floor((($target / 100) * %s - %s) / ($wi_vcpu * %s)), 0)"
+               % (HOST_ALLOC_CPU, CPU_USED_P95, PER_VCPU))
+FIT_CPU_N1 = ("clamp_min(floor((($target / 100) * (%s - %s) - %s) / ($wi_vcpu * %s)), 0)"
+              % (HOST_ALLOC_CPU, BIG_CPU, CPU_USED_P95, PER_VCPU))
+FIT_SCHED = "clamp_min(floor((%s * $wi_overprov / 100 - %s) / %s), 0)" % (LH_USABLE, LH_SCHED, WI_DISK_BYTES)
+FIT_REAL = ("clamp_min(floor((%s * (1 - $wi_minfree / 100) - %s) / (%s * $wi_fill / 100)), 0)"
+            % (LH_USABLE, LH_USED, WI_DISK_BYTES))
+FIT_ALL = ('bottomk(1, label_replace(%s, "limit", "memory (N-1)", "", "") or label_replace(%s, "limit", "CPU (N-1)", "", "") '
+           'or label_replace(%s, "limit", "Longhorn scheduling", "", "") or label_replace(%s, "limit", "disk space", "", ""))'
+           % (FIT_MEM_N1, FIT_CPU_N1, FIT_SCHED, FIT_REAL))
+DAYS_FULL = ("((%s * (1 - $wi_minfree / 100) - %s) / (deriv((%s)[$window:1h]) > 0)) / 86400"
+             % (LH_USABLE, LH_USED, LH_USED))
+
+BF = '{namespace=~"$namespace"}'
+VOLMAP = "(max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1)"
+SNAP_PVC = "(sum by (volume) (longhorn_snapshot_actual_size_bytes) * on (volume) group_left (pvc, pvc_namespace) %s)" % VOLMAP
+SNAP_USER_COUNT = ('(count by (volume) (longhorn_snapshot_actual_size_bytes{user_created="true"}) * on (volume) '
+                   "group_left (pvc, pvc_namespace) %s)" % VOLMAP)
+AGE_DAYS = "((time() - longhorn_volume_last_backup_at) / 86400 and longhorn_volume_last_backup_at > 0)"
+
+
+def whatif_panels(d):
+    d.row("What-if: how many more VMs fit? (profile in the variables above; scheduler and Longhorn limits)")
+    d.stat("Fit: memory (now)", "Whole VMs of the what-if profile that still fit by memory requests on the hosts "
+           "today: (allocatable - requested) / (profile memory / memory overcommit + QEMU overhead). Set the "
+           "overcommit variable to the Harvester overcommit-config memory setting.", FIT_MEM_NOW)
+    d.stat("Fit: memory (N-1)", "Same, if the largest host were lost: (allocatable - largest host - requested) / "
+           "request per VM. 0 means the cluster already could not absorb a host failure.", FIT_MEM_N1,
+           thr=steps(("red", None), ("orange", 1), ("green", 3)))
+    d.stat("Fit: CPU (now)", "CPU is limited by what VMs really use, not by requests (Harvester overcommits CPU). "
+           "(sizing target % x host cores - host CPU p95 over the window) / (profile vCPUs x observed average "
+           "CPU use per vCPU of today's VMs).", FIT_CPU_NOW)
+    d.stat("Fit: CPU (N-1)", "As above with the largest host removed from the capacity.", FIT_CPU_N1,
+           thr=steps(("red", None), ("orange", 1), ("green", 3)))
+    d.stat("Fit: Longhorn sched.", "Volume replicas Longhorn will still schedule: (usable disk x over-provisioning % - "
+           "already scheduled) / (disk size x replicas).", FIT_SCHED)
+    d.stat("Fit: real disk space", "Same by actual free space, keeping the minimal-available reserve and assuming new "
+           "disks fill to the expected fill % (thin provisioning).", FIT_REAL)
+    d.stat("Still fit (limit)", "The smallest of memory (N-1), CPU (N-1), Longhorn scheduling and real disk space, and "
+           "which resource is the limit.", FIT_ALL, legend="{{limit}}", text="value_and_name",
+           thr=steps(("red", None), ("orange", 1), ("green", 3)), w=6)
+    d.stat("Disk full in (days)", "Linear forecast: days until Longhorn used space reaches usable capacity minus the "
+           "minimal-available reserve at the growth rate of the look-back window. Blank when usage is not growing. Only "
+           "as good as the window (at most the 5 days Prometheus keeps).", DAYS_FULL, unit="d",
+           thr=steps(("red", None), ("orange", 30), ("green", 90)), w=6)
+
+
+def backup():
+    vol_count = lh_vm("(longhorn_volume_last_backup_at * 0 + 1)", "sum", BF)
+    never = lh_vm("(longhorn_volume_last_backup_at == bool 0)", "sum", BF)
+    stale = lh_vm("(((time() - longhorn_volume_last_backup_at) / 86400 > bool $rpo_days) "
+                  "and longhorn_volume_last_backup_at > 0)", "sum", BF)
+    newest = lh_vm(AGE_DAYS, "min", BF)
+    oldest = lh_vm(AGE_DAYS, "max", BF)
+    risk = lh_vm("(max by (volume, pvc, pvc_namespace) (longhorn_volume_actual_size_bytes) and on (volume) "
+                 "(longhorn_volume_last_backup_at == 0))", "sum", BF)
+    snap_bytes = lh_vm(SNAP_PVC, "sum", BF)
+    snap_user = lh_vm(SNAP_USER_COUNT, "sum", BF)
+    d = Dash(
+        "harvester-backup-v1", "Harvester Backup & Protection",
+        "Which VM disks are protected by Longhorn backups, how stale those backups are, how much data has never been "
+        "backed up, and how much space snapshots hold. Harvester 1.8.x / Longhorn.",
+        ["harvester", "kubevirt", "backup"],
+        [var_ds(),
+         var_query("namespace", "Namespace", "label_values(kubevirt_vm_info, namespace)", all_value=".*"),
+         var_text("rpo_days", "Backup considered stale after (days)", "7")],
+        links=[{"title": "Capacity & Reclaim", "type": "link", "url": "/d/harvester-capacity-v1",
+                "icon": "external link", "targetBlank": False},
+               {"title": "VM Scorecard", "type": "link", "url": "/d/harvester-vm-scorecard-v1",
+                "icon": "external link", "targetBlank": False}])
+    d.row("Protection (every VM that has disks, running or not)")
+    d.stat("VMs with disks", "VMs with at least one Longhorn volume.", "count(%s) or vector(0)" % vol_count)
+    d.stat("Fully protected VMs", "VMs whose volumes all have a backup newer than the stale threshold.",
+           "count((%s) == 0 and on (namespace, name) (%s) == 0) or vector(0)" % (never, stale))
+    d.stat("VMs not protected", "VMs with at least one volume that has never been backed up.",
+           "count((%s) > 0) or vector(0)" % never, thr=OK_WARN_BAD(1, 5))
+    d.stat("VMs with stale backup", "VMs with a backed-up volume whose last backup is older than the threshold.",
+           "count((%s) > 0) or vector(0)" % stale, thr=OK_WARN_BAD(1, 3))
+    d.stat("Unprotected data", "Actual size of the volumes that have never been backed up (one replica).",
+           "sum(%s) or vector(0)" % risk, unit="bytes", thr=steps(("green", None), ("orange", 1)))
+    d.stat("Backups in error", "Longhorn backups in state Error (longhorn_backup_state = 4).",
+           "count(longhorn_backup_state == 4) or vector(0)", thr=steps(("green", None), ("red", 1)))
+    d.row("Space held by snapshots and backups")
+    d.stat("Snapshot space", "Space used by all Longhorn snapshots, one replica. Snapshots are not backups: they live "
+           "on the same disks and grow with changed data.", "sum(longhorn_snapshot_actual_size_bytes)", unit="bytes")
+    d.stat("User snapshots", "Snapshots created by a user or by VM snapshot/backup jobs (not Longhorn's own).",
+           'count(longhorn_snapshot_actual_size_bytes{user_created="true"}) or vector(0)')
+    d.stat("Snapshots / disk used", "Snapshot space as % of the Longhorn disk space in use. A high share is "
+           "reclaimable space once the snapshots are no longer needed.",
+           "100 * sum(longhorn_snapshot_actual_size_bytes) / sum(longhorn_node_storage_usage_bytes)",
+           unit="percent", thr=steps(("green", None), ("orange", 30), ("red", 50)))
+    d.stat("Backup storage", "Size of the backups in the backup target.", "sum(longhorn_backup_actual_size_bytes)",
+           unit="bytes")
+    d.ts("Snapshot space over time", "By who created the snapshots.",
+         [("sum by (user_created) (longhorn_snapshot_actual_size_bytes)", "user_created={{user_created}}")],
+         unit="bytes", w=12, stack=True)
+    d.ts("Backup storage over time", "Total size of the Longhorn backups.",
+         [("sum(longhorn_backup_actual_size_bytes)", "backups")], unit="bytes", w=12)
+    d.row("Per VM")
+    d.table("Backup status per VM", "Newest/oldest = age in days of the last backup of the VM's backed-up volumes. "
+            "'Never' counts volumes with no backup at all. Snapshot columns show the space and the number of "
+            "user-created snapshots on the VM's volumes.",
+            [(vol_count, "Volumes", "short", None),
+             (never, "Never backed up", "short", steps(("green", None), ("orange", 1))),
+             (stale, "Stale", "short", steps(("green", None), ("orange", 1))),
+             (newest, "Newest (d)", "short", steps(("green", None), ("orange", 3), ("red", 7))),
+             (oldest, "Oldest (d)", "short", steps(("green", None), ("orange", 3), ("red", 7))),
+             (risk, "Unprotected", "bytes", None),
+             (snap_bytes, "Snapshots", "bytes", None),
+             (snap_user, "User snaps", "short", None)],
+            sort=("Unprotected", True), vm_link=True, h=12)
+    d.table("Largest snapshot consumers (any volume)", "PVCs by space held by their snapshots, including volumes "
+            "that belong to no VM.",
+            [("topk(15, sum by (pvc_namespace, pvc) (%s))" % SNAP_PVC, "Snapshot space", "bytes", None),
+             ("sum by (pvc_namespace, pvc) (%s) and on (pvc_namespace, pvc) topk(15, sum by (pvc_namespace, pvc) (%s))"
+              % (SNAP_USER_COUNT, SNAP_PVC), "User snaps", "short", None)],
+            labels={"pvc_namespace": "Namespace", "pvc": "PVC"}, sort=("Snapshot space", True), h=9)
+    return d
 
 
 def main():
@@ -1118,7 +1285,7 @@ def main():
         panels = 0
         for name, dash in (("harvester-vm-contention", contention()), ("harvester-vm-detail-v2", detail()),
                            ("harvester-rightsizing", rightsizing()), ("harvester-capacity", capacity()),
-                           ("harvester-vm-scorecard", scorecard())):
+                           ("harvester-vm-scorecard", scorecard()), ("harvester-backup", backup())):
             with open(os.path.join(OUT[psi], name + ".json"), "w") as f:
                 json.dump(dash.d, f, indent=2)
                 f.write("\n")

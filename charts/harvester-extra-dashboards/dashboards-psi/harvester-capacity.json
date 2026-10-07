@@ -104,6 +104,196 @@
             "value": "5d"
           }
         ]
+      },
+      {
+        "type": "textbox",
+        "name": "target",
+        "label": "Sizing target % (CPU)",
+        "query": "70",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "70",
+          "value": "70"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "70",
+            "value": "70"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_vcpu",
+        "label": "What-if VM: vCPUs",
+        "query": "4",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "4",
+          "value": "4"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "4",
+            "value": "4"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_mem",
+        "label": "What-if VM: memory GiB",
+        "query": "8",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "8",
+          "value": "8"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "8",
+            "value": "8"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_disk",
+        "label": "What-if VM: disk GiB",
+        "query": "100",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "100",
+          "value": "100"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "100",
+            "value": "100"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_replicas",
+        "label": "What-if: Longhorn replicas",
+        "query": "2",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "2",
+          "value": "2"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "2",
+            "value": "2"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_fill",
+        "label": "What-if: new disk fill %",
+        "query": "50",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "50",
+          "value": "50"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "50",
+            "value": "50"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_overcommit",
+        "label": "Harvester memory overcommit (x)",
+        "query": "1.75",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "1.75",
+          "value": "1.75"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "1.75",
+            "value": "1.75"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_overhead",
+        "label": "QEMU overhead per VM GiB",
+        "query": "0.5",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "0.5",
+          "value": "0.5"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "0.5",
+            "value": "0.5"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_overprov",
+        "label": "Longhorn over-provisioning %",
+        "query": "200",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "200",
+          "value": "200"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "200",
+            "value": "200"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "wi_minfree",
+        "label": "Longhorn minimal available %",
+        "query": "20",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "20",
+          "value": "20"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "20",
+            "value": "20"
+          }
+        ]
       }
     ]
   },
@@ -682,7 +872,7 @@
     },
     {
       "type": "row",
-      "title": "Host utilisation",
+      "title": "What-if: how many more VMs fit? (profile in the variables above; scheduler and Longhorn limits)",
       "collapsed": false,
       "id": 11,
       "gridPos": {
@@ -694,6 +884,507 @@
       "panels": []
     },
     {
+      "type": "stat",
+      "title": "Fit: memory (now)",
+      "description": "Whole VMs of the what-if profile that still fit by memory requests on the hosts today: (allocatable - requested) / (profile memory / memory overcommit + QEMU overhead). Set the overcommit variable to the Harvester overcommit-config memory setting.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 12,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(floor((sum((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - sum((sum by (node) (kube_pod_container_resource_requests{resource=\"memory\"})) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"})) / (($wi_mem / $wi_overcommit + $wi_overhead) * 1073741824)), 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fit: memory (N-1)",
+      "description": "Same, if the largest host were lost: (allocatable - largest host - requested) / request per VM. 0 means the cluster already could not absorb a host failure.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 13,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(floor((sum((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - max((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - sum((sum by (node) (kube_pod_container_resource_requests{resource=\"memory\"})) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"})) / (($wi_mem / $wi_overcommit + $wi_overhead) * 1073741824)), 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fit: CPU (now)",
+      "description": "CPU is limited by what VMs really use, not by requests (Harvester overcommits CPU). (sizing target % x host cores - host CPU p95 over the window) / (profile vCPUs x observed average CPU use per vCPU of today's VMs).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 14,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(floor((($target / 100) * sum((kube_node_status_allocatable{resource=\"cpu\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - quantile_over_time(0.95, (sum(sum by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info) unless on (nodename) label_replace(kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}, \"nodename\", \"$1\", \"node\", \"(.*)\")))[$window:5m])) / ($wi_vcpu * clamp_min(sum(rate(kubevirt_vmi_cpu_usage_seconds_total[5m])) / sum(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))), 0.01))), 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fit: CPU (N-1)",
+      "description": "As above with the largest host removed from the capacity.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 15,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(floor((($target / 100) * (sum((kube_node_status_allocatable{resource=\"cpu\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - max((kube_node_status_allocatable{resource=\"cpu\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"})) - quantile_over_time(0.95, (sum(sum by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info) unless on (nodename) label_replace(kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}, \"nodename\", \"$1\", \"node\", \"(.*)\")))[$window:5m])) / ($wi_vcpu * clamp_min(sum(rate(kubevirt_vmi_cpu_usage_seconds_total[5m])) / sum(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))), 0.01))), 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fit: Longhorn sched.",
+      "description": "Volume replicas Longhorn will still schedule: (usable disk x over-provisioning % - already scheduled) / (disk size x replicas).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 16,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(floor((sum(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes) * $wi_overprov / 100 - sum(longhorn_node_storage_scheduled_bytes)) / ($wi_disk * 1073741824 * $wi_replicas)), 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fit: real disk space",
+      "description": "Same by actual free space, keeping the minimal-available reserve and assuming new disks fill to the expected fill % (thin provisioning).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 17,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(floor((sum(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes) * (1 - $wi_minfree / 100) - sum(longhorn_node_storage_usage_bytes)) / (($wi_disk * 1073741824 * $wi_replicas) * $wi_fill / 100)), 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Still fit (limit)",
+      "description": "The smallest of memory (N-1), CPU (N-1), Longhorn scheduling and real disk space, and which resource is the limit.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 18,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "bottomk(1, label_replace(clamp_min(floor((sum((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - max((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - sum((sum by (node) (kube_pod_container_resource_requests{resource=\"memory\"})) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"})) / (($wi_mem / $wi_overcommit + $wi_overhead) * 1073741824)), 0), \"limit\", \"memory (N-1)\", \"\", \"\") or label_replace(clamp_min(floor((($target / 100) * (sum((kube_node_status_allocatable{resource=\"cpu\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - max((kube_node_status_allocatable{resource=\"cpu\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"})) - quantile_over_time(0.95, (sum(sum by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info) unless on (nodename) label_replace(kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}, \"nodename\", \"$1\", \"node\", \"(.*)\")))[$window:5m])) / ($wi_vcpu * clamp_min(sum(rate(kubevirt_vmi_cpu_usage_seconds_total[5m])) / sum(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))), 0.01))), 0), \"limit\", \"CPU (N-1)\", \"\", \"\") or label_replace(clamp_min(floor((sum(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes) * $wi_overprov / 100 - sum(longhorn_node_storage_scheduled_bytes)) / ($wi_disk * 1073741824 * $wi_replicas)), 0), \"limit\", \"Longhorn scheduling\", \"\", \"\") or label_replace(clamp_min(floor((sum(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes) * (1 - $wi_minfree / 100) - sum(longhorn_node_storage_usage_bytes)) / (($wi_disk * 1073741824 * $wi_replicas) * $wi_fill / 100)), 0), \"limit\", \"disk space\", \"\", \"\"))",
+          "legendFormat": "{{limit}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Disk full in (days)",
+      "description": "Linear forecast: days until Longhorn used space reaches usable capacity minus the minimal-available reserve at the growth rate of the look-back window. Blank when usage is not growing. Only as good as the window (at most the 5 days Prometheus keeps).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 19,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((sum(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes) * (1 - $wi_minfree / 100) - sum(longhorn_node_storage_usage_bytes)) / (deriv((sum(longhorn_node_storage_usage_bytes))[$window:1h]) > 0)) / 86400",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Host utilisation",
+      "collapsed": false,
+      "id": 20,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "panels": []
+    },
+    {
       "type": "timeseries",
       "title": "Host CPU utilisation",
       "description": "% of CPU time not idle, per node.",
@@ -701,12 +1392,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 12,
+      "id": 21,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 24
       },
       "targets": [
         {
@@ -781,12 +1472,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 13,
+      "id": 22,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 24
       },
       "targets": [
         {
@@ -861,12 +1552,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 14,
+      "id": 23,
       "gridPos": {
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 32
       },
       "targets": [
         {
@@ -1101,12 +1792,12 @@
       "type": "row",
       "title": "Stopped VMs and the storage they hold",
       "collapsed": false,
-      "id": 15,
+      "id": 24,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 38
       },
       "panels": []
     },
@@ -1118,12 +1809,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 16,
+      "id": 25,
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 30
+        "y": 39
       },
       "targets": [
         {
@@ -1175,12 +1866,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 17,
+      "id": 26,
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 30
+        "y": 39
       },
       "targets": [
         {
@@ -1232,12 +1923,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 18,
+      "id": 27,
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 30
+        "y": 39
       },
       "targets": [
         {
@@ -1297,12 +1988,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 19,
+      "id": 28,
       "gridPos": {
         "h": 9,
         "w": 14,
         "x": 0,
-        "y": 34
+        "y": 43
       },
       "targets": [
         {
@@ -1500,12 +2191,12 @@
       "type": "row",
       "title": "Storage efficiency (Longhorn)",
       "collapsed": false,
-      "id": 20,
+      "id": 29,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 52
       },
       "panels": []
     },
@@ -1517,12 +2208,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 21,
+      "id": 30,
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 44
+        "y": 53
       },
       "targets": [
         {
@@ -1574,12 +2265,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 22,
+      "id": 31,
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 44
+        "y": 53
       },
       "targets": [
         {
@@ -1631,12 +2322,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 23,
+      "id": 32,
       "gridPos": {
         "h": 8,
         "w": 14,
         "x": 8,
-        "y": 44
+        "y": 53
       },
       "targets": [
         {
@@ -1724,12 +2415,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 24,
+      "id": 33,
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 61
       },
       "targets": [
         {
@@ -1830,12 +2521,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 25,
+      "id": 34,
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 61
       },
       "targets": [
         {
@@ -1964,12 +2655,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 26,
+      "id": 35,
       "gridPos": {
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 68
       },
       "targets": [
         {

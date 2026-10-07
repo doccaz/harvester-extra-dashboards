@@ -266,6 +266,47 @@
           }
         }
       ]
+    },
+    {
+      "name": "harvester-extra.backups-and-snapshots",
+      "rules": [
+        {
+          "alert": "HarvesterBackupStale",
+          "expr": "((time() - longhorn_volume_last_backup_at) / 86400 > __BACKUP_MAX_AGE_DAYS__) and longhorn_volume_last_backup_at > 0",
+          "for": "1h",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} has a stale backup",
+            "description": "The last backup of volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) is {{ $value | printf \"%.1f\" }} days old (above __BACKUP_MAX_AGE_DAYS__). Volumes that were never backed up are not alerted on, see the Backup & Protection dashboard."
+          }
+        },
+        {
+          "alert": "HarvesterBackupError",
+          "expr": "longhorn_backup_state == 4",
+          "for": "0m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "A Longhorn backup of volume {{ $labels.volume }} failed",
+            "description": "Backup {{ $labels.backup }} of volume {{ $labels.volume }} is in state Error."
+          }
+        },
+        {
+          "alert": "HarvesterSnapshotSpaceHigh",
+          "expr": "(100 * sum(longhorn_snapshot_actual_size_bytes) / sum(longhorn_node_storage_usage_bytes)) > __SNAPSHOT_SPACE_PCT__",
+          "for": "6h",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Snapshots hold a large share of the Longhorn disk space",
+            "description": "Snapshots use {{ $value | printf \"%.0f\" }}% of the used Longhorn disk space (above __SNAPSHOT_SPACE_PCT__%). They are not backups; delete the ones nobody needs."
+          }
+        }
+      ]
     }
   ]
 }

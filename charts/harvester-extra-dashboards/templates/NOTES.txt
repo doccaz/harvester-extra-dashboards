@@ -18,6 +18,9 @@ look for the "[SV+]" dashboards, or filter by the tag "sv-plus":
 {{- if .Values.dashboards.scorecard.enabled }}
   - [SV+] Harvester VM Scorecard
 {{- end }}
+{{- if .Values.dashboards.backup.enabled }}
+  - [SV+] Harvester Backup & Protection
+{{- end }}
 {{- if .Values.alerts.enabled }}
 
 Alert rules installed: kubectl -n {{ default .Release.Namespace .Values.alerts.namespace }} get prometheusrule {{ .Release.Name }}-alerts

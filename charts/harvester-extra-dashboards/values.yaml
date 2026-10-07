@@ -33,6 +33,9 @@ dashboards:
   scorecard:
     # -- "[SV+] Harvester VM Scorecard" (uid harvester-vm-scorecard-v1): one sortable row per VM with flags
     enabled: true
+  backup:
+    # -- "[SV+] Harvester Backup & Protection" (uid harvester-backup-v1): backups, never-backed-up data, snapshots
+    enabled: true
 
 alerts:
   # -- Install a PrometheusRule with the contention, capacity and storage alerts. Off by default: it will start
@@ -62,6 +65,8 @@ alerts:
     longhornNodeUsedPercent: 80
     diskAwaitMs: 50
     diskUtilPercent: 95
+    backupMaxAgeDays: 7
+    snapshotSpacePercent: 50
 
 # -- Extra labels added to every dashboard ConfigMap
 labels: {}

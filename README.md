@@ -1,6 +1,6 @@
 # harvester-extra-dashboards
 
-Extra Grafana dashboards and alerts for Harvester (SUSE Virtualization): VM contention, right-sizing, capacity/reclaim, a VM scorecard and 21 opt-in alert rules, packaged as a Helm chart.
+Extra Grafana dashboards and alerts for Harvester (SUSE Virtualization): VM contention, right-sizing, capacity/reclaim with a what-if, a VM scorecard, backup and snapshot protection, and 24 opt-in alert rules, packaged as a Helm chart.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that
 close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, launcher OOM
@@ -13,8 +13,9 @@ Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring` 108.0.2
 | **[SV+] Harvester VM Contention** (`harvester-vm-contention-v1`) | Which VMs/nodes are being starved right now: CPU Ready %, guest memory in use, swap/major faults, launcher OOM risk, read/write latency, network drops (plus per-VM and host PSI panels in the `psi` variant). Panels link to the detail dashboard. |
 | **[SV+] Harvester VM Info Detail v2** (`harvester-vm-detail-v2`) | One VM end to end, plus the node it runs on. Adds what the stock `Harvester VM Info Detail` lacks. Own uid: the official `harvester-vm-*` dashboards are untouched. Both titles carry the `[SV+]` prefix and the `sv-plus` tag (`TITLE_PREFIX`/`TAG` in `generate.py`) to stand out from the stock ones. |
 | **[SV+] Harvester Right-Sizing** (`harvester-rightsizing-v1`) | Which running VMs are idle, over- or under-provisioned. Tunable thresholds and look-back window (variables). Per-VM p95 CPU/memory against what was provisioned, a **suggested** vCPU/memory size at a target utilisation, and the total vCPU/memory that could be reclaimed. |
-| **[SV+] Harvester Capacity & Reclaim** (`harvester-capacity-v1`) | Cluster level: vCPU:core ratio, memory allocated/requested, **N-1 headroom**, per-host overcommit and utilisation, stopped VMs and the disk they hold, Longhorn thin-provisioning and node storage, detached volumes, PVCs that no VM or pod uses, large mostly-empty guest filesystems. |
+| **[SV+] Harvester Capacity & Reclaim** (`harvester-capacity-v1`) | Cluster level: vCPU:core ratio, memory allocated/requested, **N-1 headroom**, per-host overcommit and utilisation, stopped VMs and the disk they hold, Longhorn thin-provisioning and node storage, detached volumes, PVCs that no VM or pod uses, large mostly-empty guest filesystems, and a **what-if**: how many more VMs of a profile you define still fit by memory (now and after losing the biggest host), CPU, Longhorn scheduling and real disk space, which resource is the limit, and a linear days-until-disk-full forecast. |
 | **[SV+] Harvester VM Scorecard** (`harvester-vm-scorecard-v1`) | One sortable row per running VM: CPU used/Ready, guest and launcher memory, VM-level and Longhorn write latency, IOPS, drops, unhealthy volumes, volumes never backed up, and the right-sizing savings. **Flags** counts the warning thresholds a VM is over; the VM name opens the detail dashboard. |
+| **[SV+] Harvester Backup & Protection** (`harvester-backup-v1`) | Which VMs are protected by Longhorn backups: fully protected, never backed up, stale (threshold is a variable), the size of the data that has never been backed up, backups in error, plus the space held by snapshots (user-created vs Longhorn's own), backup storage over time, and a per-VM table with newest/oldest backup age and snapshot space. |
 
 ## Install
 
@@ -36,14 +37,14 @@ Grafana loads them within about a minute: look for the `[SV+]` dashboards, or fi
 | Value | Default | |
 |---|---|---|
 | `psi.enabled` | `false` | Install the variant with the pressure (PSI) panels; needs kernel PSI, see below |
-| `dashboards.contention.enabled`, `.detail.enabled`, `.rightsizing.enabled`, `.capacity.enabled`, `.scorecard.enabled` | `true` | Install each dashboard |
-| `alerts.enabled` | `false` | Install the PrometheusRule with 21 alerts (see "Alerts") |
+| `dashboards.contention.enabled`, `.detail.enabled`, `.rightsizing.enabled`, `.capacity.enabled`, `.scorecard.enabled`, `.backup.enabled` | `true` | Install each dashboard |
+| `alerts.enabled` | `false` | Install the PrometheusRule with 24 alerts (see "Alerts") |
 | `alerts.thresholds.*`, `alerts.namespace`, `alerts.labels` | see `values.yaml` | Alert thresholds, rule namespace, rule labels |
 | `dashboardsNamespace` | `cattle-dashboards` | Namespace Grafana's sidecar watches |
 | `sidecar.label` / `sidecar.labelValue` | `grafana_dashboard` / `"1"` | Sidecar selector |
 | `labels`, `annotations` | `{}` | Extra metadata on the ConfigMaps (e.g. a sidecar folder annotation) |
 
-ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<release>-rightsizing`, `<release>-capacity` and `<release>-scorecard` (plus the PrometheusRule `<release>-alerts` when enabled). Do not mix the chart with
+ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<release>-rightsizing`, `<release>-capacity`, `<release>-scorecard` and `<release>-backup` (plus the PrometheusRule `<release>-alerts` when enabled). Do not mix the chart with
 `apply.sh` on the same cluster: both define the same dashboard uids (`./apply.sh --delete` first).
 
 ## Files
@@ -96,7 +97,7 @@ Both dashboards are for **decisions**, not alerts: they list candidates and a su
 
 ## Alerts
 
-`alerts.enabled=true` installs one `PrometheusRule` (`<release>-alerts`) with 21 rules in three groups. It is **off by
+`alerts.enabled=true` installs one `PrometheusRule` (`<release>-alerts`) with 24 rules in four groups. It is **off by
 default** because it starts firing in Alertmanager, whose routes decide who is notified (the Harvester Prometheus
 selects rules from every namespace, so no extra wiring is needed to see them in the Prometheus and Alertmanager UIs).
 Thresholds are values (`alerts.thresholds.*`); the rule text is never templated, so `{{ $labels.name }}` reaches
@@ -108,8 +109,9 @@ Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver
 | `harvester-extra.vm-contention` | CPU Ready high (warning 5%, critical 10%), guest memory high, launcher memory near its limit, launcher OOM-killed, VM disk write latency, Longhorn write latency of a VM's volumes, VM network drops |
 | `harvester-extra.host-contention` | node OOM kills, host memory / CPU / I/O pressure (PSI, silent until `psi=1`), node disk latency, node disk saturated |
 | `harvester-extra.capacity-and-storage` | cluster cannot lose its biggest host (N-1 memory), node memory requests high, Longhorn scheduling high / full, Longhorn node disks filling, Longhorn volume degraded / faulted |
+| `harvester-extra.backups-and-snapshots` | a backed-up volume whose last backup is older than `backupMaxAgeDays` (default 7), a Longhorn backup in state Error, snapshots holding more than `snapshotSpacePercent` (default 50) of the used Longhorn disk. Volumes that were *never* backed up are deliberately not alerted on (the lab has 40 of 50): see the dashboard |
 
-Each expression was parsed, then evaluated against the lab Prometheus: all 21 run without error, and with the
+Each expression was parsed, then evaluated against the lab Prometheus: all 24 run without error, and with the
 thresholds forced to 0 every rule that has data returns series (the event rules, such as OOM kills and degraded
 volumes, were checked by confirming their selectors exist). On the lab only **`HarvesterMemoryN1Exceeded`** fires
 today (145%). Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
@@ -122,6 +124,27 @@ mapped from the VM's PVCs; the unit is nanoseconds and is converted to ms), node
 of the worst physical disk per node, and a table of degraded/faulted volumes (empty is good). Read them against the
 VM-level latency above: slow at the VM and at Longhorn means the storage layer; slow only at the VM points at the
 guest or the virtual disk path.
+
+## What-if and backup: how to read them
+
+**What-if (Capacity & Reclaim).** Define a VM in the variables (vCPUs, memory, disk, replicas, expected fill %) and the
+dashboard counts how many more of them fit. It is an estimate built from the scheduler's and Longhorn's own rules, not a
+promise:
+- *Memory* is the scheduler's view: (allocatable - requested) / (VM memory / memory overcommit + QEMU overhead). Set
+  "Harvester memory overcommit" to the `overcommit-config` memory value (the lab uses 175%, the default is 150%). The
+  N-1 variant removes the largest host first; 0 means a host failure could not be absorbed.
+- *CPU* is not limited by requests (Harvester overcommits CPU 16x by default) but by what VMs really use:
+  (target % x host cores - host CPU p95 over the window) / (VM vCPUs x the average CPU use per vCPU of today's VMs).
+- *Longhorn scheduling* is (usable disk x over-provisioning % - scheduled) / (disk x replicas); *real disk space*
+  keeps the minimal-available reserve and assumes new disks fill to the expected fill %.
+- *Days until full* extrapolates the growth of Longhorn used space linearly over the window (at most 5 days of data);
+  treat a restore or a large import inside the window as a spike, not a trend.
+
+**Backup & Protection.** `longhorn_volume_last_backup_at` is the epoch of the last backup (0 = never) and
+`longhorn_backup_state` is 0=New, 1=Pending, 2=InProgress, 3=Completed, 4=Error. VMs are mapped to volumes through the
+PVCs of their disks, so stopped VMs are included. **Snapshots are not backups**: they sit on the same disks, and
+Longhorn does export their sizes (`longhorn_snapshot_actual_size_bytes`, `user_created` true/false). On the lab 94
+user-created snapshots hold 1.3 TiB, about 40% of the used Longhorn disk.
 
 ## vSphere to Harvester mapping used
 
@@ -249,9 +272,11 @@ the per-VM and host pressure panels show real values, and the three host pressur
 3. Alertmanager: the default config notifies nobody. `docs/alertmanager/` is applied on the lab (mail catcher, behind
    its own login and a Cloudflare-tunnelled Ingress), but the Alertmanager config Secret may be reset by an add-on
    redeploy (untested), and the catcher page is protected by a password only (a Cloudflare Access policy is advisable).
-4. Gaps against VMware's tools that are not built: capacity what-if / time-to-full (needs longer retention), snapshot
-   and backup hygiene beyond "volumes never backed up" (Harvester does not export snapshot metrics), showback by
-   namespace, a DRS-like balance and migration view, and longer metric retention (an add-on change).
+4. Gaps against VMware's tools that are not built: showback by namespace, a DRS-like balance and migration view,
+   longer metric retention (an add-on change), and a cost model for "reclaimable". An earlier version of this file
+   said Harvester exports no snapshot metrics; that was wrong, Longhorn does and the Backup & Protection dashboard uses them.
+5. The what-if is only as good as its inputs: the memory-overcommit variable has to be set by hand to match your
+   `overcommit-config`, and the CPU estimate assumes new VMs behave like today's average.
 
 ## Releasing
 

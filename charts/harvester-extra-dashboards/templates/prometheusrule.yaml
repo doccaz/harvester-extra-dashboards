@@ -12,7 +12,8 @@ placeholders are substituted, so Prometheus templates such as {{ $labels.name }}
       "HOST_MEM_PSI" $t.hostMemoryPressurePercent "HOST_IO_PSI" $t.hostIoPressurePercent
       "HOST_REQ_MEM" $t.hostMemoryRequestsPercent "LH_SCHED_WARN" $t.longhornScheduledWarn
       "LH_SCHED_CRIT" $t.longhornScheduledCritical "LH_NODE_USED" $t.longhornNodeUsedPercent
-      "DISK_AWAIT_MS" $t.diskAwaitMs "DISK_UTIL" $t.diskUtilPercent }}
+      "DISK_AWAIT_MS" $t.diskAwaitMs "DISK_UTIL" $t.diskUtilPercent
+      "BACKUP_MAX_AGE_DAYS" $t.backupMaxAgeDays "SNAPSHOT_SPACE_PCT" $t.snapshotSpacePercent }}
 {{- $rules := .Files.Get "alerts/harvester-extra-alerts.json" }}
 {{- range $token, $value := $tokens }}
 {{- $rules = replace (printf "__%s__" $token) (toString $value) $rules }}

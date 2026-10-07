@@ -750,6 +750,84 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
+    "panel": "Fit: memory (now)",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kube_pod_container_resource_requests"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Fit: memory (N-1)",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kube_pod_container_resource_requests"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Fit: CPU (now)",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total",
+      "node_cpu_seconds_total",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Fit: CPU (N-1)",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total",
+      "node_cpu_seconds_total",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Fit: Longhorn sched.",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Fit: real disk space",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Still fit (limit)",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kube_pod_container_resource_requests",
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total",
+      "node_cpu_seconds_total",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Disk full in (days)",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
     "panel": "Host CPU utilisation",
     "metrics": [
       "node_cpu_seconds_total",
@@ -921,6 +999,102 @@
       "kubevirt_vmi_vcpu_delay_seconds_total",
       "kubevirt_vmi_vcpu_seconds_total"
     ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "VMs with disks",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Fully protected VMs",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "VMs not protected",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "VMs with stale backup",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Unprotected data",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Backups in error",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Snapshot space",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "User snapshots",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Snapshots / disk used",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Backup storage",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Snapshot space over time",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Backup storage over time",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Backup status per VM",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-backup-v1",
+    "panel": "Largest snapshot consumers (any volume)",
+    "metrics": [],
     "psi": false
   }
 ]
