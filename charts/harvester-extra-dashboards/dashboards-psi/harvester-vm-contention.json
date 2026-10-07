@@ -166,7 +166,7 @@
   "panels": [
     {
       "type": "row",
-      "title": "Overview: is anything being starved right now?",
+      "title": "Overview: is anything being starved right now? (tiles count VMs unless they say otherwise)",
       "collapsed": false,
       "id": 1,
       "gridPos": {
@@ -179,7 +179,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs: CPU Ready > 5%",
+      "title": "CPU Ready > 5%",
       "description": "VMs whose vCPUs spend more than 5% of the time runnable but not scheduled. vSphere guidance: >5% per vCPU is a warning, >10% is a problem.",
       "datasource": {
         "type": "prometheus",
@@ -309,7 +309,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs: guest mem > 90%",
+      "title": "Guest mem > 90%",
       "description": "VMs whose guest OS reports less than 10% memory available (MemAvailable, so page cache is NOT counted as used). Needs qemu-guest-agent.",
       "datasource": {
         "type": "prometheus",
@@ -374,7 +374,7 @@
     },
     {
       "type": "stat",
-      "title": "Max VM memory PSI",
+      "title": "Max mem PSI",
       "description": "Highest share of the last 5 minutes in which a VM's launcher cgroup stalled waiting for memory (kernel PSI via cAdvisor). Any sustained value means the VM is being reclaimed or is thrashing on the host.",
       "datasource": {
         "type": "prometheus",
@@ -439,7 +439,7 @@
     },
     {
       "type": "stat",
-      "title": "Max VM CPU PSI",
+      "title": "Max CPU PSI",
       "description": "Highest share of the last 5 minutes in which a VM's launcher cgroup waited for a CPU (PSI via cAdvisor): CPU limit throttling plus run-queue wait.",
       "datasource": {
         "type": "prometheus",
@@ -565,7 +565,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs near memory limit",
+      "title": "Near mem limit",
       "description": "VMs whose virt-launcher working set is above 90% of its memory limit: OOM-kill risk for the VM.",
       "datasource": {
         "type": "prometheus",
@@ -630,7 +630,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs throttled > 5%",
+      "title": "Throttled > 5%",
       "description": "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
       "datasource": {
         "type": "prometheus",
@@ -695,7 +695,7 @@
     },
     {
       "type": "stat",
-      "title": "Unhealthy volumes",
+      "title": "Unhealthy vols",
       "description": "Longhorn volumes that are degraded or faulted (a replica is missing or rebuilding). Writes slow down while that lasts.",
       "datasource": {
         "type": "prometheus",
@@ -2684,8 +2684,48 @@
                 "value": "bytes"
               },
               {
+                "id": "custom.minWidth",
+                "value": 122
+              },
+              {
                 "id": "decimals",
                 "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Namespace"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PVC"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "State"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 95
               }
             ]
           }

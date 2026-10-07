@@ -223,7 +223,7 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
     for i, name in enumerate(list(labels.values()) + [c[1] for c in cols]):
         order[name] = i + 1
     for expr, header, unit, thr in cols:
-        props = [{"id": "unit", "value": unit}]
+        props = [{"id": "unit", "value": unit}, {"id": "custom.minWidth", "value": max(72, 8 * len(header) + 34)}]
         if unit != "short":                    # counts and rates: let Grafana choose (2, not 2.0)
             props.append({"id": "decimals", "value": 1 if unit == "percent" else 0})
         if thr and thr[0]["color"] == "green" and thr[0]["value"] is None:
@@ -233,6 +233,9 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
             props += [{"id": "thresholds", "value": {"mode": "absolute", "steps": thr}},
                       {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}}]
         overrides.append({"matcher": {"id": "byName", "options": header}, "properties": props})
+    for lab in labels.values():                # label columns: names must stay readable
+        overrides.append({"matcher": {"id": "byName", "options": lab},
+                          "properties": [{"id": "custom.minWidth", "value": 150 if lab in ("VM", "PVC", "Node") else 95}]})
     if vm_link and "VM" in labels.values():
         overrides.append({"matcher": {"id": "byName", "options": "VM"}, "properties": [{"id": "links", "value": [{
             "title": "Open VM detail",
@@ -321,20 +324,20 @@ def contention():
         links=[{"title": "VM detail", "type": "link", "url": "/d/harvester-vm-detail-v2",
                 "icon": "external link", "targetBlank": False}])
 
-    d.row("Overview: is anything being starved right now?")
-    d.stat("VMs: CPU Ready > 5%", "VMs whose vCPUs spend more than 5% of the time runnable but not "
+    d.row("Overview: is anything being starved right now? (tiles count VMs unless they say otherwise)")
+    d.stat("CPU Ready > 5%", "VMs whose vCPUs spend more than 5% of the time runnable but not "
            "scheduled. vSphere guidance: >5% per vCPU is a warning, >10% is a problem.",
            "count((%s) > 5) or vector(0)" % cpu_ready(), thr=OK_WARN_BAD(1, 5))
     d.stat("Worst CPU Ready", "Highest CPU Ready % of any VM in the selection.",
            "max(%s)" % cpu_ready(), unit="percent", thr=OK_WARN_BAD(5, 10))
-    d.stat("VMs: guest mem > 90%", "VMs whose guest OS reports less than 10% memory available "
+    d.stat("Guest mem > 90%", "VMs whose guest OS reports less than 10% memory available "
            "(MemAvailable, so page cache is NOT counted as used). Needs qemu-guest-agent.",
            "count((%s) > 90) or vector(0)" % guest_mem_pct(), thr=OK_WARN_BAD(1, 3))
-    d.stat("Max VM memory PSI", "Highest share of the last 5 minutes in which a VM's launcher "
+    d.stat("Max mem PSI", "Highest share of the last 5 minutes in which a VM's launcher "
            "cgroup stalled waiting for memory (kernel PSI via cAdvisor). Any sustained value means the VM is "
            "being reclaimed or is thrashing on the host.",
            "max(%s)" % launcher_psi("memory"), unit="percent", thr=OK_WARN_BAD(1, 10))
-    d.stat("Max VM CPU PSI", "Highest share of the last 5 minutes in which a VM's launcher cgroup "
+    d.stat("Max CPU PSI", "Highest share of the last 5 minutes in which a VM's launcher cgroup "
            "waited for a CPU (PSI via cAdvisor): CPU limit throttling plus run-queue wait.",
            "max(%s)" % launcher_psi("cpu"), unit="percent", thr=OK_WARN_BAD(10, 25))
     d.stat("OOM kills (1h)", "Kernel OOM kills on the nodes (any process, including pods killed at their memory limit) plus OOM "
@@ -343,16 +346,16 @@ def contention():
            "(sum(increase(container_oom_events_total{%s}[1h])) or vector(0)))" % (NJ, LP),
            thr=steps(("green", None), ("red", 1)))
 
-    d.stat("VMs near memory limit", "VMs whose virt-launcher working set is above 90% "
+    d.stat("Near mem limit", "VMs whose virt-launcher working set is above 90% "
            "of its memory limit: OOM-kill risk for the VM.",
            "count((%s) > 90) or vector(0)" % launcher_ws_pct(), thr=OK_WARN_BAD(1, 3))
-    d.stat("VMs throttled > 5%", "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
+    d.stat("Throttled > 5%", "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
            "count((%s) > 5) or vector(0)" % launcher_name(
                '100 * sum by (namespace, pod) (rate(container_cpu_cfs_throttled_periods_total{%s}[5m])) '
                '/ sum by (namespace, pod) (rate(container_cpu_cfs_periods_total{%s}[5m]))' % (LP, LP)),
            thr=OK_WARN_BAD(1, 3))
 
-    d.stat("Unhealthy volumes", "Longhorn volumes that are degraded or faulted (a replica is missing or "
+    d.stat("Unhealthy vols", "Longhorn volumes that are degraded or faulted (a replica is missing or "
            "rebuilding). Writes slow down while that lasts.", "count(%s) or vector(0)" % UNHEALTHY_VOLS,
            thr=steps(("green", None), ("red", 1)))
 
@@ -509,9 +512,9 @@ def detail():
            unit="bytes", w=3)
     d.stat("CPU Ready", "See the CPU Ready panel below.", cpu_ready(one), unit="percent", w=4,
            thr=OK_WARN_BAD(5, 10))
-    d.stat("Guest memory in use", "100 * (1 - MemAvailable / total). Needs qemu-guest-agent.",
+    d.stat("Guest mem", "100 * (1 - MemAvailable / total). Needs qemu-guest-agent.",
            guest_mem_pct(one), unit="percent", w=4, thr=OK_WARN_BAD(80, 95))
-    d.stat("Launcher mem vs limit", "virt-launcher working set / memory limit.",
+    d.stat("Launcher mem", "virt-launcher working set / memory limit.",
            launcher_ws_pct().replace('namespace=~"$namespace"', 'namespace="$namespace"'),
            unit="percent", w=4, thr=OK_WARN_BAD(90, 98))
 
@@ -703,7 +706,7 @@ def rightsizing():
            thr=OK_WARN_BAD(1, 5))
     d.stat("vCPUs reclaimable", "Sum over VMs of (provisioned vCPUs - vCPUs needed for p95 CPU at the target "
            "utilisation).", "sum(%s) or vector(0)" % RECLAIM_VCPU)
-    d.stat("Memory reclaimable", "Sum over VMs of (allocated memory - memory needed for p95 guest usage at the "
+    d.stat("Mem reclaimable", "Sum over VMs of (allocated memory - memory needed for p95 guest usage at the "
            "target utilisation). Only VMs running qemu-guest-agent report guest memory.",
            "sum(%s) or vector(0)" % RECLAIM_MEM, unit="bytes")
     d.stat("Under-sized VMs", "VMs above the under-sized CPU or memory p95 thresholds.",
@@ -816,7 +819,7 @@ def capacity():
                 "icon": "external link", "targetBlank": False}])
 
     d.row("Cluster capacity (hosts = every node except the witness)")
-    d.stat("vCPU : physical core", "vCPUs provisioned to running VMs divided by the allocatable CPU cores of the "
+    d.stat("vCPU : core", "vCPUs provisioned to running VMs divided by the allocatable CPU cores of the "
            "hosts. Harvester overcommits CPU by default (the add-on's overcommit setting), so 3:1 is normal.",
            "sum(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))) "
            "/ sum(%s)" % hosts(ALLOC_CPU), thr=steps(("green", None), ("orange", 4), ("red", 8)))
@@ -826,12 +829,12 @@ def capacity():
     d.stat("Memory requested", "Sum of pod memory requests on the hosts / allocatable memory: what the "
            "scheduler sees.", "100 * sum(%s) / sum(%s)" % (hosts(REQ_MEM), hosts(ALLOC_MEM)), unit="percent",
            thr=OK_WARN_BAD(70, 90))
-    d.stat("N-1 memory headroom", "Memory requests / (allocatable - the largest "
+    d.stat("N-1 headroom", "Memory requests / (allocatable - the largest "
            "host). Above 100% the cluster cannot reschedule everything if that host fails.",
            "100 * sum(%s) / (sum(%s) - max(%s))" % (hosts(REQ_MEM), hosts(ALLOC_MEM), hosts(ALLOC_MEM)),
            unit="percent", thr=OK_WARN_BAD(80, 100))
     d.stat("Stopped VMs", "VMs that are not running.", "count(%s) or vector(0)" % STOPPED)
-    d.stat("Longhorn scheduled", "Storage scheduled (replicas included) / usable disk capacity of "
+    d.stat("Disk scheduled", "Storage scheduled (replicas included) / usable disk capacity of "
            "the Longhorn nodes. Longhorn refuses new volumes beyond its over-provisioning limit.",
            "100 * sum(longhorn_node_storage_scheduled_bytes) / sum(longhorn_node_storage_capacity_bytes "
            "- longhorn_node_storage_reservation_bytes)", unit="percent", thr=OK_WARN_BAD(80, 100))
@@ -864,9 +867,9 @@ def capacity():
             labels={"nodename": "Node"}, sort=("CPU p95 %", True), h=6)
 
     d.row("Stopped VMs and the storage they hold")
-    d.stat("Stopped: provisioned", "Provisioned size of the disks of VMs that are not running.",
+    d.stat("Stopped: size", "Provisioned size of the disks of VMs that are not running.",
            "sum(%s) or vector(0)" % STOPPED_DISK, unit="bytes")
-    d.stat("Stopped: actually used", "Longhorn actual (thin) size of those disks, one replica.",
+    d.stat("Stopped: used", "Longhorn actual (thin) size of those disks, one replica.",
            "sum(%s) or vector(0)" % STOPPED_ACTUAL, unit="bytes")
     d.stat("Stopped > 30 days", "Stopped VMs whose last transition is more than 30 days ago.",
            "count((%s) > 30) or vector(0)" % DAYS_STOPPED, thr=OK_WARN_BAD(1, 5))
@@ -1206,9 +1209,9 @@ def whatif_panels(d):
            "CPU use per vCPU of today's VMs).", FIT_CPU_NOW)
     d.stat("Fit: CPU (N-1)", "As above with the largest host removed from the capacity.", FIT_CPU_N1,
            thr=steps(("red", None), ("orange", 1), ("green", 3)))
-    d.stat("Fit: Longhorn sched.", "Volume replicas Longhorn will still schedule: (usable disk x over-provisioning % - "
+    d.stat("Fit: sched.", "Volume replicas Longhorn will still schedule: (usable disk x over-provisioning % - "
            "already scheduled) / (disk size x replicas).", FIT_SCHED)
-    d.stat("Fit: real disk space", "Same by actual free space, keeping the minimal-available reserve and assuming new "
+    d.stat("Fit: real disk", "Same by actual free space, keeping the minimal-available reserve and assuming new "
            "disks fill to the expected fill % (thin provisioning).", FIT_REAL)
     d.stat("Still fit (limit)", "The smallest of memory (N-1), CPU (N-1), Longhorn scheduling and real disk space, and "
            "which resource is the limit.", FIT_ALL, legend="{{limit}}", text="value_and_name",
@@ -1252,7 +1255,7 @@ def backup():
            "count((%s) == 0 and on (namespace, name) (%s) == 0) or vector(0)" % (never, stale))
     d.stat("VMs not protected", "VMs with at least one volume that has never been backed up.",
            "count((%s) > 0) or vector(0)" % never, thr=OK_WARN_BAD(1, 5))
-    d.stat("VMs with stale backup", "VMs with a backed-up volume whose last backup is older than the threshold.",
+    d.stat("Stale backups", "VMs with a backed-up volume whose last backup is older than the threshold.",
            "count((%s) > 0) or vector(0)" % stale, thr=OK_WARN_BAD(1, 3))
     d.stat("Unprotected data", "Actual size of the volumes that have never been backed up (one replica).",
            "sum(%s) or vector(0)" % risk, unit="bytes", thr=steps(("green", None), ("orange", 1)))
@@ -1263,7 +1266,7 @@ def backup():
            "on the same disks and grow with changed data.", "sum(longhorn_snapshot_actual_size_bytes)", unit="bytes")
     d.stat("User snapshots", "Snapshots created by a user or by VM snapshot/backup jobs (not Longhorn's own).",
            'count(longhorn_snapshot_actual_size_bytes{user_created="true"}) or vector(0)')
-    d.stat("Snapshots / disk used", "Snapshot space as % of the Longhorn disk space in use. A high share is "
+    d.stat("Snapshot share", "Snapshot space as % of the Longhorn disk space in use. A high share is "
            "reclaimable space once the snapshots are no longer needed.",
            "100 * sum(longhorn_snapshot_actual_size_bytes) / sum(longhorn_node_storage_usage_bytes)",
            unit="percent", thr=steps(("green", None), ("orange", 30), ("red", 50)))

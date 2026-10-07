@@ -735,6 +735,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 74
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -776,6 +780,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 74
               }
             ]
           },
@@ -788,6 +796,10 @@
               {
                 "id": "unit",
                 "value": "bytes"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 72
               },
               {
                 "id": "decimals",
@@ -804,6 +816,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 114
               },
               {
                 "id": "decimals",
@@ -853,6 +869,10 @@
                 "value": "percent"
               },
               {
+                "id": "custom.minWidth",
+                "value": 122
+              },
+              {
                 "id": "decimals",
                 "value": 1
               },
@@ -898,6 +918,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 122
               },
               {
                 "id": "decimals",
@@ -947,6 +971,10 @@
                 "value": "percent"
               },
               {
+                "id": "custom.minWidth",
+                "value": 146
+              },
+              {
                 "id": "decimals",
                 "value": 1
               },
@@ -994,6 +1022,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 138
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -1037,6 +1069,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 170
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -1078,6 +1114,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 72
               }
             ]
           },
@@ -1090,6 +1130,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 122
               },
               {
                 "id": "thresholds",
@@ -1135,6 +1179,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 146
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -1174,6 +1222,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 146
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -1211,6 +1263,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 122
               }
             ]
           },
@@ -1223,6 +1279,10 @@
               {
                 "id": "unit",
                 "value": "bytes"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 114
               },
               {
                 "id": "decimals",
@@ -1239,6 +1299,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 106
               },
               {
                 "id": "decimals",
@@ -1288,6 +1352,10 @@
                 "value": "percent"
               },
               {
+                "id": "custom.minWidth",
+                "value": 106
+              },
+              {
                 "id": "decimals",
                 "value": 1
               },
@@ -1335,6 +1403,10 @@
                 "value": "percent"
               },
               {
+                "id": "custom.minWidth",
+                "value": 106
+              },
+              {
                 "id": "decimals",
                 "value": 1
               },
@@ -1368,6 +1440,30 @@
                   "type": "color-background",
                   "mode": "basic"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Namespace"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 150
               }
             ]
           },

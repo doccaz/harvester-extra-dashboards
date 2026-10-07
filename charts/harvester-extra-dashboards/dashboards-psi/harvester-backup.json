@@ -292,7 +292,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs with stale backup",
+      "title": "Stale backups",
       "description": "VMs with a backed-up volume whose last backup is older than the threshold.",
       "datasource": {
         "type": "prometheus",
@@ -606,7 +606,7 @@
     },
     {
       "type": "stat",
-      "title": "Snapshots / disk used",
+      "title": "Snapshot share",
       "description": "Snapshot space as % of the Longhorn disk space in use. A high share is reclaimable space once the snapshots are no longer needed.",
       "datasource": {
         "type": "prometheus",
@@ -1054,6 +1054,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 90
               }
             ]
           },
@@ -1066,6 +1070,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 154
               },
               {
                 "id": "thresholds",
@@ -1107,6 +1115,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 74
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -1144,6 +1156,10 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 114
               },
               {
                 "id": "thresholds",
@@ -1189,6 +1205,10 @@
                 "value": "short"
               },
               {
+                "id": "custom.minWidth",
+                "value": 114
+              },
+              {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
@@ -1232,6 +1252,10 @@
                 "value": "bytes"
               },
               {
+                "id": "custom.minWidth",
+                "value": 122
+              },
+              {
                 "id": "decimals",
                 "value": 0
               }
@@ -1248,6 +1272,10 @@
                 "value": "bytes"
               },
               {
+                "id": "custom.minWidth",
+                "value": 106
+              },
+              {
                 "id": "decimals",
                 "value": 0
               }
@@ -1262,6 +1290,34 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 114
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Namespace"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 150
               }
             ]
           },
@@ -1395,6 +1451,10 @@
                 "value": "bytes"
               },
               {
+                "id": "custom.minWidth",
+                "value": 146
+              },
+              {
                 "id": "decimals",
                 "value": 0
               }
@@ -1409,6 +1469,34 @@
               {
                 "id": "unit",
                 "value": "short"
+              },
+              {
+                "id": "custom.minWidth",
+                "value": 114
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Namespace"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PVC"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 150
               }
             ]
           }

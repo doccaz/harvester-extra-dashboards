@@ -350,7 +350,7 @@
     },
     {
       "type": "stat",
-      "title": "Guest memory in use",
+      "title": "Guest mem",
       "description": "100 * (1 - MemAvailable / total). Needs qemu-guest-agent.",
       "datasource": {
         "type": "prometheus",
@@ -415,7 +415,7 @@
     },
     {
       "type": "stat",
-      "title": "Launcher mem vs limit",
+      "title": "Launcher mem",
       "description": "virt-launcher working set / memory limit.",
       "datasource": {
         "type": "prometheus",
