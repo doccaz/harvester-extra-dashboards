@@ -8,7 +8,7 @@ relay is involved. Nothing here is applied by the chart.
 | File | What |
 |---|---|
 | `alertmanager.yaml` | The complete Alertmanager config: stock config + receiver `harvester-extra-email` + a route for `alertname =~ "Harvester.*"` |
-| `mailpit.yaml` | [Mailpit](https://github.com/axllent/mailpit) `v1.31.4` Deployment + Service in `cattle-monitoring-system`: accepts mail on :1025 only with the login from Secret `mailpit-smtp`, shows it on :8025. Nothing leaves the cluster |
+| `mailpit.yaml` | [Mailpit](https://github.com/axllent/mailpit) `v1.31.4` in `cattle-monitoring-system`: a 1 GiB PVC (messages survive restarts), a Deployment running as non-root (65534) with a read-only root filesystem, Service `mailpit` (SMTP :1025, login required via Secret `mailpit-smtp`) and Service `mailpit-web` (web UI :8025). Nothing leaves the cluster |
 
 Checked offline: `amtool check-config` (Alertmanager 0.28.1, the version in Harvester v1.8.2) passes, and
 `amtool config routes test` sends `Harvester*` alerts (warning and critical, with and without a `namespace` label) to
@@ -48,7 +48,7 @@ curl -s localhost:9093/metrics | grep alertmanager_config_last_reload_successful
 # 5. send a test alert; after the 30 s group_wait it is mailed to the catcher
 curl -s -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d \
  '[{"labels":{"alertname":"HarvesterTestAlert","severity":"warning","namespace":"labs"},"annotations":{"summary":"routing test"}}]'
-$K port-forward svc/mailpit 8025:8025 &      # open http://localhost:8025 (the web UI itself has no login)
+$K port-forward svc/mailpit-web 8025:8025 &      # open http://localhost:8025 (the web UI itself has no login)
 ```
 
 Read the password back when you need it: `kubectl --context local -n cattle-monitoring-system get secret mailpit-smtp
@@ -58,6 +58,27 @@ Keep it out of git: `alertmanager.yaml` in this folder only has the `CHANGE_ME` 
 Undo: re-apply the backed-up Secret (`kubectl apply -f alertmanager-secret.backup.yaml`, after removing
 `resourceVersion`/`uid`/`creationTimestamp` if apply complains), then
 `kubectl --context local delete -f docs/alertmanager/mailpit.yaml` and `kubectl --context local -n cattle-monitoring-system delete secret mailpit-smtp`.
+
+## Reading the mails
+
+The web UI shows the full text of every alert mail and has **no login of its own**, so it is not exposed. Read it with
+`kubectl --context local -n cattle-monitoring-system port-forward svc/mailpit-web 8025:8025` and open
+`http://localhost:8025`. The API works too: `curl localhost:8025/api/v1/messages`.
+
+Tested on the lab: after deleting the pod the new one (volume re-attached) still lists the earlier messages, and while
+the catcher was down Alertmanager kept retrying and delivered once it was back.
+
+**Why not through the Harvester/Kubernetes API proxy** (the way Grafana is reached)? Mailpit needs its `--webroot` in
+the request path, but the proxy strips the prefix before forwarding, so the page's API calls end up in the wrong place
+(and the proxy's HTML link rewriting would add a second prefix). Grafana only works there because it can generate
+prefixed URLs while serving from `/`. An Ingress with its own hostname has no such problem; see below.
+
+**If you want an Ingress:** the cluster has the `nginx` class on the Harvester VIP, but the VIP presents a
+self-signed certificate for every name, your public hostnames (`*.conteudoquestionavel.org`) resolve to Cloudflare, and
+cert-manager has no issuer. So an Ingress means choosing a hostname (a LAN-only name such as
+`mailpit.<VIP>.nip.io` needs no DNS change; a public name needs a DNS/tunnel entry of yours), accepting a self-signed
+certificate or adding an issuer, and turning on Mailpit's own login (`MP_UI_AUTH`), because this page reveals alert
+details. Not done here.
 
 ## Notes and caveats
 

@@ -1,7 +1,23 @@
 # Throwaway in-cluster mail catcher to prove the Alertmanager route and receiver work, before any real SMTP
 # relay is involved. Nothing is delivered outside the cluster: Mailpit accepts messages on port 1025 and shows
 # it in a web UI on 8025, but only from a client that logs in with the credential in Secret mailpit-smtp
-# (create it first, see README.md). Delete it when done:  kubectl delete -f mailpit.yaml
+# (create it first, see README.md). Messages are kept on a 1 GiB volume. The web UI is not exposed: read it with
+# kubectl port-forward (README.md). Mailpit cannot be served through the Kubernetes API service proxy (it needs its
+# webroot in the request path, the proxy strips it). Delete it when done:  kubectl delete -f mailpit.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mailpit-data
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: mailpit
+    app.kubernetes.io/part-of: harvester-extra-dashboards
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi        # default storage class (harvester-2replicas on this lab)
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,6 +28,8 @@ metadata:
     app.kubernetes.io/part-of: harvester-extra-dashboards
 spec:
   replicas: 1
+  strategy:
+    type: Recreate          # the volume is ReadWriteOnce
   selector:
     matchLabels:
       app.kubernetes.io/name: mailpit
@@ -21,6 +39,12 @@ spec:
         app.kubernetes.io/name: mailpit
         app.kubernetes.io/part-of: harvester-extra-dashboards
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: mailpit
           image: docker.io/axllent/mailpit:v1.31.4
@@ -46,17 +70,19 @@ spec:
             limits: {cpu: 200m, memory: 128Mi}
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities: {drop: ["ALL"]}
           volumeMounts:
             - {name: data, mountPath: /data}
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: mailpit-data
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: mailpit
+  name: mailpit              # SMTP only: Alertmanager sends here
   namespace: cattle-monitoring-system
   labels:
     app.kubernetes.io/name: mailpit
@@ -66,4 +92,17 @@ spec:
     app.kubernetes.io/name: mailpit
   ports:
     - {name: smtp, port: 1025, targetPort: smtp}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit-web          # web UI only (a single port, so the API proxy path needs no ':port')
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: mailpit
+    app.kubernetes.io/part-of: harvester-extra-dashboards
+spec:
+  selector:
+    app.kubernetes.io/name: mailpit
+  ports:
     - {name: http, port: 8025, targetPort: http}
