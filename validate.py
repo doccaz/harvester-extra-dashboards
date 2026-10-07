@@ -73,7 +73,31 @@ if len(titles) == 2:
         if any("PSI" in t for t in tset):
             errors.append("%s: the default variant contains PSI panels" % uid)
 
-print("%d variants, %d expressions checked" % (len(variants), exprs))
+# alert rules: every expression parses with its thresholds filled in, tokens are all handled by the template
+rules_path = os.path.join(HERE, "charts", "harvester-extra-dashboards", "alerts", "harvester-extra-alerts.json")
+template = open(os.path.join(HERE, "charts", "harvester-extra-dashboards", "templates", "prometheusrule.yaml")).read()
+names = set()
+with open(rules_path) as f:
+    for grp in json.load(f)["groups"]:
+        for r in grp["rules"]:
+            for key in ("alert", "expr", "for", "labels", "annotations"):
+                if key not in r:
+                    errors.append("alert %s: missing %s" % (r.get("alert", "?"), key))
+            if r["alert"] in names:
+                errors.append("duplicate alert name %s" % r["alert"])
+            names.add(r["alert"])
+            if r["labels"].get("severity") not in ("warning", "critical"):
+                errors.append("alert %s: severity must be warning or critical" % r["alert"])
+            for token in re.findall(r"__([A-Z_]+)__", json.dumps(r)):
+                if '"%s"' % token not in template:
+                    errors.append("alert %s: token %s is not substituted by the chart template" % (r["alert"], token))
+            try:
+                promql_parser.parse(re.sub(r"__[A-Z_]+__", "1", r["expr"]))
+                exprs += 1
+            except Exception as ex:  # noqa: BLE001
+                errors.append("alert %s: %s" % (r["alert"], ex))
+
+print("%d variants, %d expressions checked (dashboards + %d alert rules)" % (len(variants), exprs, len(names)))
 if errors:
     print("\n".join(errors))
     sys.exit(1)

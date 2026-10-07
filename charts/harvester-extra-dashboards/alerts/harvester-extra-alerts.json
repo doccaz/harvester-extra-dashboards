@@ -1,0 +1,271 @@
+{
+  "groups": [
+    {
+      "name": "harvester-extra.vm-contention",
+      "rules": [
+        {
+          "alert": "HarvesterVMCPUReadyHigh",
+          "expr": "(100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total[5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total)))) > __CPU_READY_WARN__",
+          "for": "15m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is waiting for a CPU",
+            "description": "VM {{ $labels.namespace }}/{{ $labels.name }} has spent {{ $value | printf \"%.1f\" }}% of the time runnable but not scheduled for 15 minutes (warning above __CPU_READY_WARN__%). The host CPUs are oversubscribed; see the VM Contention dashboard."
+          }
+        },
+        {
+          "alert": "HarvesterVMCPUReadyCritical",
+          "expr": "(100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total[5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total)))) > __CPU_READY_CRIT__",
+          "for": "10m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is starved of CPU",
+            "description": "VM {{ $labels.namespace }}/{{ $labels.name }} CPU Ready is {{ $value | printf \"%.1f\" }}% (critical above __CPU_READY_CRIT__%)."
+          }
+        },
+        {
+          "alert": "HarvesterVMGuestMemoryHigh",
+          "expr": "(100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes) / max by (namespace, name) (kubevirt_vmi_memory_available_bytes))) > __GUEST_MEM__",
+          "for": "15m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is running out of memory",
+            "description": "VM {{ $labels.namespace }}/{{ $labels.name }} uses {{ $value | printf \"%.1f\" }}% of its memory (MemAvailable, page cache not counted; needs qemu-guest-agent). Above __GUEST_MEM__% for 15 minutes."
+          }
+        },
+        {
+          "alert": "HarvesterVMLauncherMemoryNearLimit",
+          "expr": "(max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{container=\"compute\",pod=~\"virt-launcher-.*\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",container=\"compute\",pod=~\"virt-launcher-.*\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > __LAUNCHER_MEM__",
+          "for": "10m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is close to being OOM-killed",
+            "description": "The virt-launcher of VM {{ $labels.namespace }}/{{ $labels.name }} uses {{ $value | printf \"%.1f\" }}% of its memory limit. If it reaches the limit the VM is killed."
+          }
+        },
+        {
+          "alert": "HarvesterVMLauncherOOMKilled",
+          "expr": "increase(container_oom_events_total{container=\"compute\",pod=~\"virt-launcher-.*\"}[10m]) > 0",
+          "for": "0m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "virt-launcher {{ $labels.pod }} was OOM-killed",
+            "description": "The VM behind pod {{ $labels.namespace }}/{{ $labels.pod }} hit its memory limit and was killed."
+          }
+        },
+        {
+          "alert": "HarvesterVMDiskLatencyHigh",
+          "expr": "(1000 * sum by (namespace, name) (rate(kubevirt_vmi_storage_write_times_seconds_total[5m])) / (sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total[5m])) > 0)) > __VM_DISK_LATENCY_MS__",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} disk writes are slow",
+            "description": "VM {{ $labels.namespace }}/{{ $labels.name }} average write latency is {{ $value | printf \"%.0f\" }} ms (above __VM_DISK_LATENCY_MS__ ms)."
+          }
+        },
+        {
+          "alert": "HarvesterVMLonghornLatencyHigh",
+          "expr": "((max by (namespace, name) (label_replace(label_replace(longhorn_volume_write_latency, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes) * 0 + 1))) / 1e6) > __LH_LATENCY_MS__",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} storage layer is slow",
+            "description": "Longhorn reports {{ $value | printf \"%.0f\" }} ms write latency on a volume of VM {{ $labels.namespace }}/{{ $labels.name }} (above __LH_LATENCY_MS__ ms): check replicas, rebuilds and node disks."
+          }
+        },
+        {
+          "alert": "HarvesterVMNetworkDrops",
+          "expr": "(sum by (namespace, name) (rate(kubevirt_vmi_network_receive_packets_dropped_total[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_packets_dropped_total[5m]))) > __NET_DROPS__",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is dropping packets",
+            "description": "VM {{ $labels.namespace }}/{{ $labels.name }} drops {{ $value | printf \"%.1f\" }} packets/s on its vNICs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "harvester-extra.host-contention",
+      "rules": [
+        {
+          "alert": "HarvesterNodeOOMKills",
+          "expr": "(increase(node_vmstat_oom_kill[15m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)) > 0",
+          "for": "0m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "node {{ $labels.nodename }} killed processes for lack of memory",
+            "description": "{{ $value | printf \"%.0f\" }} OOM kills on node {{ $labels.nodename }} in the last 15 minutes (any pod or process)."
+          }
+        },
+        {
+          "alert": "HarvesterHostMemoryPressure",
+          "expr": "(100 * rate(node_pressure_memory_waiting_seconds_total[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)) > __HOST_MEM_PSI__",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "node {{ $labels.nodename }} is under memory pressure",
+            "description": "Tasks on node {{ $labels.nodename }} waited for memory {{ $value | printf \"%.1f\" }}% of the time (PSI; needs psi=1 on the kernel command line)."
+          }
+        },
+        {
+          "alert": "HarvesterHostCPUPressure",
+          "expr": "(100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)) > __HOST_CPU_PSI__",
+          "for": "15m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "node {{ $labels.nodename }} CPUs are saturated",
+            "description": "Runnable tasks on node {{ $labels.nodename }} waited for a CPU {{ $value | printf \"%.1f\" }}% of the time (PSI)."
+          }
+        },
+        {
+          "alert": "HarvesterHostIOPressure",
+          "expr": "(100 * rate(node_pressure_io_waiting_seconds_total[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)) > __HOST_IO_PSI__",
+          "for": "15m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "node {{ $labels.nodename }} is waiting on disk I/O",
+            "description": "Tasks on node {{ $labels.nodename }} waited for block I/O {{ $value | printf \"%.1f\" }}% of the time (PSI)."
+          }
+        },
+        {
+          "alert": "HarvesterNodeDiskLatencyHigh",
+          "expr": "(max by (nodename) (1000 * (rate(node_disk_read_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) + rate(node_disk_write_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m])) / (rate(node_disk_reads_completed_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) + rate(node_disk_writes_completed_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))) > __DISK_AWAIT_MS__",
+          "for": "15m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "node {{ $labels.nodename }} disks are slow",
+            "description": "Worst physical disk of node {{ $labels.nodename }} averages {{ $value | printf \"%.0f\" }} ms per I/O."
+          }
+        },
+        {
+          "alert": "HarvesterNodeDiskBusy",
+          "expr": "(max by (nodename) (100 * rate(node_disk_io_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))) > __DISK_UTIL__",
+          "for": "30m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "node {{ $labels.nodename }} has a saturated disk",
+            "description": "A physical disk of node {{ $labels.nodename }} has been busy {{ $value | printf \"%.0f\" }}% of the time."
+          }
+        }
+      ]
+    },
+    {
+      "name": "harvester-extra.capacity-and-storage",
+      "rules": [
+        {
+          "alert": "HarvesterMemoryN1Exceeded",
+          "expr": "(100 * sum((sum by (node) (kube_pod_container_resource_requests{resource=\"memory\"})) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) / (sum((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) - max((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}))) > 100",
+          "for": "1h",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "The cluster cannot lose its biggest host",
+            "description": "Memory requests are {{ $value | printf \"%.0f\" }}% of what the cluster would have after losing its largest host: that host's workloads could not be rescheduled."
+          }
+        },
+        {
+          "alert": "HarvesterHostMemoryRequestsHigh",
+          "expr": "(100 * ((sum by (node) (kube_pod_container_resource_requests{resource=\"memory\"})) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"}) / on (node) ((kube_node_status_allocatable{resource=\"memory\"}) unless on (node) kube_node_labels{label_node_role_harvesterhci_io_witness=\"true\"})) > __HOST_REQ_MEM__",
+          "for": "30m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Node {{ $labels.node }} memory is almost fully requested",
+            "description": "Pod memory requests on {{ $labels.node }} are {{ $value | printf \"%.0f\" }}% of its allocatable memory."
+          }
+        },
+        {
+          "alert": "HarvesterLonghornSchedulingHigh",
+          "expr": "(100 * sum(longhorn_node_storage_scheduled_bytes) / sum((longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes))) > __LH_SCHED_WARN__",
+          "for": "30m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Longhorn storage is almost fully scheduled",
+            "description": "{{ $value | printf \"%.0f\" }}% of the usable disk space is already promised to volume replicas."
+          }
+        },
+        {
+          "alert": "HarvesterLonghornSchedulingFull",
+          "expr": "(100 * sum(longhorn_node_storage_scheduled_bytes) / sum((longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes))) > __LH_SCHED_CRIT__",
+          "for": "15m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Longhorn cannot schedule more replicas",
+            "description": "{{ $value | printf \"%.0f\" }}% of the usable disk space is scheduled: new volumes and rebuilds can fail."
+          }
+        },
+        {
+          "alert": "HarvesterLonghornNodeStorageHigh",
+          "expr": "(100 * longhorn_node_storage_usage_bytes / (longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes)) > __LH_NODE_USED__",
+          "for": "30m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Longhorn disks of node {{ $labels.node }} are filling up",
+            "description": "Node {{ $labels.node }} uses {{ $value | printf \"%.0f\" }}% of its Longhorn disk space."
+          }
+        },
+        {
+          "alert": "HarvesterLonghornVolumeDegraded",
+          "expr": "longhorn_volume_robustness{state=\"degraded\"} == 1",
+          "for": "30m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is degraded",
+            "description": "A replica of volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) is missing or still rebuilding for 30 minutes."
+          }
+        },
+        {
+          "alert": "HarvesterLonghornVolumeFaulted",
+          "expr": "longhorn_volume_robustness{state=\"faulted\"} == 1",
+          "for": "5m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is faulted",
+            "description": "Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) has no healthy replica."
+          }
+        }
+      ]
+    }
+  ]
+}

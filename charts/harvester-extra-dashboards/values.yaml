@@ -30,6 +30,38 @@ dashboards:
     # -- "[SV+] Harvester Capacity & Reclaim" (uid harvester-capacity-v1): overcommit, N-1 headroom, stopped VMs,
     # Longhorn efficiency, unused volumes
     enabled: true
+  scorecard:
+    # -- "[SV+] Harvester VM Scorecard" (uid harvester-vm-scorecard-v1): one sortable row per VM with flags
+    enabled: true
+
+alerts:
+  # -- Install a PrometheusRule with the contention, capacity and storage alerts. Off by default: it will start
+  # firing in Alertmanager, whose routes decide who gets notified.
+  enabled: false
+  # -- Namespace of the PrometheusRule (default: the release namespace). The Harvester Prometheus selects rules
+  # from every namespace.
+  namespace: ""
+  # -- Labels on the PrometheusRule; `release` is what a default kube-prometheus-stack ruleSelector expects
+  labels:
+    release: rancher-monitoring
+  thresholds:
+    cpuReadyWarn: 5
+    cpuReadyCritical: 10
+    guestMemoryPercent: 95
+    launcherMemoryPercent: 95
+    vmDiskLatencyMs: 50
+    longhornLatencyMs: 50
+    vmNetworkDropsPerSecond: 10
+    # the three PSI alerts stay silent until the nodes boot with psi=1
+    hostCpuPressurePercent: 30
+    hostMemoryPressurePercent: 10
+    hostIoPressurePercent: 40
+    hostMemoryRequestsPercent: 90
+    longhornScheduledWarn: 90
+    longhornScheduledCritical: 100
+    longhornNodeUsedPercent: 80
+    diskAwaitMs: 50
+    diskUtilPercent: 95
 
 # -- Extra labels added to every dashboard ConfigMap
 labels: {}

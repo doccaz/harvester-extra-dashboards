@@ -13,6 +13,7 @@ risk, storage latency (pressure/PSI panels are opt-in, see below). Target: **Har
 | **[SV+] Harvester VM Info Detail v2** (`harvester-vm-detail-v2`) | One VM end to end, plus the node it runs on. Adds what the stock `Harvester VM Info Detail` lacks. Own uid: the official `harvester-vm-*` dashboards are untouched. Both titles carry the `[SV+]` prefix and the `sv-plus` tag (`TITLE_PREFIX`/`TAG` in `generate.py`) to stand out from the stock ones. |
 | **[SV+] Harvester Right-Sizing** (`harvester-rightsizing-v1`) | Which running VMs are idle, over- or under-provisioned. Tunable thresholds and look-back window (variables). Per-VM p95 CPU/memory against what was provisioned, a **suggested** vCPU/memory size at a target utilisation, and the total vCPU/memory that could be reclaimed. |
 | **[SV+] Harvester Capacity & Reclaim** (`harvester-capacity-v1`) | Cluster level: vCPU:core ratio, memory allocated/requested, **N-1 headroom**, per-host overcommit and utilisation, stopped VMs and the disk they hold, Longhorn thin-provisioning and node storage, detached volumes, PVCs that no VM or pod uses, large mostly-empty guest filesystems. |
+| **[SV+] Harvester VM Scorecard** (`harvester-vm-scorecard-v1`) | One sortable row per running VM: CPU used/Ready, guest and launcher memory, VM-level and Longhorn write latency, IOPS, drops, unhealthy volumes, volumes never backed up, and the right-sizing savings. **Flags** counts the warning thresholds a VM is over; the VM name opens the detail dashboard. |
 
 ## Install
 
@@ -34,12 +35,14 @@ Grafana loads them within about a minute: look for the `[SV+]` dashboards, or fi
 | Value | Default | |
 |---|---|---|
 | `psi.enabled` | `false` | Install the variant with the pressure (PSI) panels; needs kernel PSI, see below |
-| `dashboards.contention.enabled`, `.detail.enabled`, `.rightsizing.enabled`, `.capacity.enabled` | `true` | Install each dashboard |
+| `dashboards.contention.enabled`, `.detail.enabled`, `.rightsizing.enabled`, `.capacity.enabled`, `.scorecard.enabled` | `true` | Install each dashboard |
+| `alerts.enabled` | `false` | Install the PrometheusRule with 21 alerts (see "Alerts") |
+| `alerts.thresholds.*`, `alerts.namespace`, `alerts.labels` | see `values.yaml` | Alert thresholds, rule namespace, rule labels |
 | `dashboardsNamespace` | `cattle-dashboards` | Namespace Grafana's sidecar watches |
 | `sidecar.label` / `sidecar.labelValue` | `grafana_dashboard` / `"1"` | Sidecar selector |
 | `labels`, `annotations` | `{}` | Extra metadata on the ConfigMaps (e.g. a sidecar folder annotation) |
 
-ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<release>-rightsizing` and `<release>-capacity`. Do not mix the chart with
+ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<release>-rightsizing`, `<release>-capacity` and `<release>-scorecard` (plus the PrometheusRule `<release>-alerts` when enabled). Do not mix the chart with
 `apply.sh` on the same cluster: both define the same dashboard uids (`./apply.sh --delete` first).
 
 ## Files
@@ -88,6 +91,34 @@ Both dashboards are for **decisions**, not alerts: they list candidates and a su
   (label `node-role.harvesterhci.io/witness`). Above 100% the cluster cannot reschedule everything if that host fails.
 - Tables join their columns with Grafana's `merge` transformation on namespace/VM, so each column query is
   restricted to the same VM set; the VM name links to the detail dashboard.
+
+## Alerts
+
+`alerts.enabled=true` installs one `PrometheusRule` (`<release>-alerts`) with 21 rules in three groups. It is **off by
+default** because it starts firing in Alertmanager, whose routes decide who is notified (the Harvester Prometheus
+selects rules from every namespace, so no extra wiring is needed to see them in the Prometheus and Alertmanager UIs).
+Thresholds are values (`alerts.thresholds.*`); the rule text is never templated, so `{{ $labels.name }}` reaches
+Prometheus intact.
+
+| Group | Alerts |
+|---|---|
+| `harvester-extra.vm-contention` | CPU Ready high (warning 5%, critical 10%), guest memory high, launcher memory near its limit, launcher OOM-killed, VM disk write latency, Longhorn write latency of a VM's volumes, VM network drops |
+| `harvester-extra.host-contention` | node OOM kills, host memory / CPU / I/O pressure (PSI, silent until `psi=1`), node disk latency, node disk saturated |
+| `harvester-extra.capacity-and-storage` | cluster cannot lose its biggest host (N-1 memory), node memory requests high, Longhorn scheduling high / full, Longhorn node disks filling, Longhorn volume degraded / faulted |
+
+Each expression was parsed, then evaluated against the lab Prometheus: all 21 run without error, and with the
+thresholds forced to 0 every rule that has data returns series (the event rules, such as OOM kills and degraded
+volumes, were checked by confirming their selectors exist). On the lab only **`HarvesterMemoryN1Exceeded`** fires
+today (145%). Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
+`unknown`, so only `degraded` and `faulted` alert.
+
+## Storage contention (VM Contention dashboard)
+
+Under "Storage and network contention": Longhorn read/write latency and IOPS **per VM** (Longhorn's own measurement,
+mapped from the VM's PVCs; the unit is nanoseconds and is converted to ms), node disk latency (await) and utilisation
+of the worst physical disk per node, and a table of degraded/faulted volumes (empty is good). Read them against the
+VM-level latency above: slow at the VM and at Longhorn means the storage layer; slow only at the VM points at the
+guest or the virtual disk path.
 
 ## vSphere to Harvester mapping used
 

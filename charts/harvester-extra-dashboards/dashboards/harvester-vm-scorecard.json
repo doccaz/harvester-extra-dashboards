@@ -1,0 +1,1223 @@
+{
+  "uid": "harvester-vm-scorecard-v1",
+  "title": "[SV+] Harvester VM Scorecard",
+  "description": "One row per running VM: contention, storage health, backups and right-sizing in a single sortable table. 'Flags' counts the warning thresholds a VM is over. Blank means no data or none (for example no qemu-guest-agent).",
+  "tags": [
+    "harvester",
+    "kubevirt",
+    "scorecard",
+    "sv-plus"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "",
+  "links": [
+    {
+      "title": "VM Contention",
+      "type": "link",
+      "url": "/d/harvester-vm-contention-v1",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "Right-Sizing",
+      "type": "link",
+      "url": "/d/harvester-rightsizing-v1",
+      "icon": "external link",
+      "targetBlank": false
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "datasource",
+        "label": "Data source",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "namespace",
+        "label": "Namespace",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kubevirt_vmi_info, namespace)",
+        "query": {
+          "query": "label_values(kubevirt_vmi_info, namespace)",
+          "refId": "namespace"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "hide": 0,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "type": "query",
+        "name": "vm",
+        "label": "VM",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kubevirt_vmi_info{namespace=~\"$namespace\"}, name)",
+        "query": {
+          "query": "label_values(kubevirt_vmi_info{namespace=~\"$namespace\"}, name)",
+          "refId": "vm"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "hide": 0,
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "type": "custom",
+        "name": "window",
+        "label": "Look-back window",
+        "query": "1d,3d,5d",
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "3d",
+          "value": "3d"
+        },
+        "options": [
+          {
+            "selected": false,
+            "text": "1d",
+            "value": "1d"
+          },
+          {
+            "selected": true,
+            "text": "3d",
+            "value": "3d"
+          },
+          {
+            "selected": false,
+            "text": "5d",
+            "value": "5d"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "target",
+        "label": "Target utilisation % (sizing)",
+        "query": "70",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "70",
+          "value": "70"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "70",
+            "value": "70"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Fleet",
+      "collapsed": false,
+      "id": 1,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Running VMs",
+      "description": "VMs with a running instance in the selection.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 2,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "VMs flagged",
+      "description": "Running VMs over at least one warning threshold.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 3,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count((sum by (namespace, name) (label_replace(((100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 5, \"k\", \"ready\", \"\", \"\") or label_replace(((100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) / max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 90, \"k\", \"mem\", \"\", \"\") or label_replace((max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > bool 90, \"k\", \"launcher\", \"\", \"\") or label_replace((((max by (namespace, name) (label_replace(label_replace(longhorn_volume_write_latency, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) / 1e6) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 20, \"k\", \"lat\", \"\", \"\") or label_replace(((sum by (namespace, name) (rate(kubevirt_vmi_network_receive_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 10, \"k\", \"drops\", \"\", \"\") or label_replace((sum by (namespace, name) (label_replace(label_replace(longhorn_volume_robustness{state=~\"degraded|faulted\"} == 1, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) > bool 0, \"k\", \"volumes\", \"\", \"\"))) > 0) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Unhealthy volumes",
+      "description": "Longhorn volumes that are degraded or faulted (detached volumes report 'unknown' and are not counted).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 4,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(longhorn_volume_robustness{state=~\"degraded|faulted\"} == 1) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "VM volumes never backed up",
+      "description": "Volumes of VM disks with no Longhorn backup ever recorded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 5,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at == bool 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "row",
+      "title": "VM scorecard (click a column header to sort; the VM name opens its detail dashboard)",
+      "collapsed": false,
+      "id": 6,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "VM scorecard",
+      "description": "Flags = number of these over their warning level: CPU Ready > 5%, guest memory > 90%, launcher memory > 90% of limit, Longhorn write latency > 20 ms, network drops > 10/s, unhealthy volumes. The saving columns come from the right-sizing dashboard (look-back window and target utilisation variables).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 7,
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace, name) (label_replace(((100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 5, \"k\", \"ready\", \"\", \"\") or label_replace(((100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) / max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 90, \"k\", \"mem\", \"\", \"\") or label_replace((max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > bool 90, \"k\", \"launcher\", \"\", \"\") or label_replace((((max by (namespace, name) (label_replace(label_replace(longhorn_volume_write_latency, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) / 1e6) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 20, \"k\", \"lat\", \"\", \"\") or label_replace(((sum by (namespace, name) (rate(kubevirt_vmi_network_receive_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > bool 10, \"k\", \"drops\", \"\", \"\") or label_replace((sum by (namespace, name) (label_replace(label_replace(longhorn_volume_robustness{state=~\"degraded|faulted\"} == 1, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) > bool 0, \"k\", \"volumes\", \"\", \"\"))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) / max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(1000 * sum by (namespace, name) (rate(kubevirt_vmi_storage_write_times_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) / (sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) > 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((max by (namespace, name) (label_replace(label_replace(longhorn_volume_write_latency, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) / 1e6) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(sum by (namespace, name) (rate(kubevirt_vmi_network_receive_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_packets_dropped_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "L",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(sum by (namespace, name) (label_replace(label_replace(longhorn_volume_robustness{state=~\"degraded|faulted\"} == 1, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "M",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(sum by (namespace, name) (label_replace(label_replace((longhorn_volume_last_backup_at == bool 0), \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\") * on (namespace, persistentvolumeclaim) group_left (name) (max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) * 0 + 1))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(clamp_min((count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) - ((clamp_min(ceil((quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / ($target / 100)), 1)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "O",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(clamp_min((max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) - ((clamp_min(ceil((quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / ($target / 100) / 1073741824), 1) * 1073741824) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "name": "VM",
+              "Value #A": "Flags",
+              "Value #B": "vCPUs",
+              "Value #C": "Mem",
+              "Value #D": "CPU used %",
+              "Value #E": "CPU Ready %",
+              "Value #F": "Guest mem %",
+              "Value #G": "Launcher mem %",
+              "Value #H": "Disk write ms",
+              "Value #I": "Longhorn write ms",
+              "Value #J": "IOPS",
+              "Value #K": "Net drops/s",
+              "Value #L": "Unhealthy vols",
+              "Value #M": "No-backup vols",
+              "Value #N": "vCPU saving",
+              "Value #O": "Mem saving"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Namespace": 1,
+              "VM": 2,
+              "Flags": 3,
+              "vCPUs": 4,
+              "Mem": 5,
+              "CPU used %": 6,
+              "CPU Ready %": 7,
+              "Guest mem %": 8,
+              "Launcher mem %": 9,
+              "Disk write ms": 10,
+              "Longhorn write ms": 11,
+              "IOPS": 12,
+              "Net drops/s": 13,
+              "Unhealthy vols": 14,
+              "No-backup vols": 15,
+              "vCPU saving": 16,
+              "Mem saving": 17
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Flags"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPUs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mem"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU used %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU Ready %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Guest mem %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 95
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Launcher mem %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 90
+                    },
+                    {
+                      "color": "red",
+                      "value": 98
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Disk write ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 20
+                    },
+                    {
+                      "color": "red",
+                      "value": 50
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Longhorn write ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 20
+                    },
+                    {
+                      "color": "red",
+                      "value": 50
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "IOPS"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Net drops/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unhealthy vols"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "No-backup vols"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPU saving"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mem saving"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open VM detail",
+                    "url": "/d/harvester-vm-detail-v2?var-namespace=${__data.fields.Namespace}&var-vm=${__value.text}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Flags",
+            "desc": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -72,6 +72,12 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
+    "panel": "Unhealthy volumes",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
     "panel": "CPU Ready % per VM (top N)",
     "metrics": [
       "kubevirt_vmi_vcpu_delay_seconds_total",
@@ -220,6 +226,57 @@
       "kubevirt_vmi_storage_iops_write_total",
       "kubevirt_vmi_storage_write_times_seconds_total"
     ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Longhorn read latency per VM (top N)",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Longhorn write latency per VM (top N)",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Longhorn IOPS per VM (top N)",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Node disk latency (worst device per node)",
+    "metrics": [
+      "node_disk_read_time_seconds_total",
+      "node_disk_reads_completed_total",
+      "node_disk_write_time_seconds_total",
+      "node_disk_writes_completed_total",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Node disk utilisation (busiest device per node)",
+    "metrics": [
+      "node_disk_io_time_seconds_total",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-contention-v1",
+    "panel": "Degraded or faulted Longhorn volumes",
+    "metrics": [],
     "psi": false
   },
   {
@@ -799,6 +856,70 @@
     "metrics": [
       "kubevirt_vmi_filesystem_capacity_bytes",
       "kubevirt_vmi_filesystem_used_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-scorecard-v1",
+    "panel": "Running VMs",
+    "metrics": [
+      "kubevirt_vmi_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-scorecard-v1",
+    "panel": "VMs flagged",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "kube_pod_container_resource_limits",
+      "kubevirt_vm_disk_allocated_size_bytes",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_usable_bytes",
+      "kubevirt_vmi_network_receive_packets_dropped_total",
+      "kubevirt_vmi_network_transmit_packets_dropped_total",
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-scorecard-v1",
+    "panel": "Unhealthy volumes",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-scorecard-v1",
+    "panel": "VM volumes never backed up",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-scorecard-v1",
+    "panel": "VM scorecard",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "container_pressure_cpu_waiting_seconds_total",
+      "container_pressure_io_waiting_seconds_total",
+      "container_pressure_memory_waiting_seconds_total",
+      "kube_pod_container_resource_limits",
+      "kubevirt_vm_disk_allocated_size_bytes",
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes",
+      "kubevirt_vmi_network_receive_packets_dropped_total",
+      "kubevirt_vmi_network_transmit_packets_dropped_total",
+      "kubevirt_vmi_storage_iops_read_total",
+      "kubevirt_vmi_storage_iops_write_total",
+      "kubevirt_vmi_storage_write_times_seconds_total",
+      "kubevirt_vmi_vcpu_delay_seconds_total",
+      "kubevirt_vmi_vcpu_seconds_total"
     ],
     "psi": false
   }

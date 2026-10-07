@@ -200,6 +200,7 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
     The queries are joined with the `merge` transformation, so every expression must aggregate by the same
     labels. `labels` renames label columns, e.g. {"namespace": "Namespace", "name": "VM"}."""
     labels = labels or {"namespace": "Namespace", "name": "VM"}
+    cols = [c for c in cols if WITH_PSI or "PSI" not in c[1]]
     self._record(title, desc, [(c[0], c[1]) for c in cols])
     single = len(cols) == 1
     rename = dict(labels)
@@ -333,6 +334,10 @@ def contention():
                '/ sum by (namespace, pod) (rate(container_cpu_cfs_periods_total{%s}[5m]))' % (LP, LP)),
            thr=OK_WARN_BAD(1, 3))
 
+    d.stat("Unhealthy volumes", "Longhorn volumes that are degraded or faulted (a replica is missing or "
+           "rebuilding). Writes slow down while that lasts.", "count(%s) or vector(0)" % UNHEALTHY_VOLS,
+           thr=steps(("green", None), ("red", 1)))
+
     d.row("CPU contention")
     d.ts("CPU Ready % per VM (top N)", "Time vCPUs spent runnable but waiting for a physical CPU, as % of "
          "wall time, averaged over the VM's vCPUs (kubevirt_vmi_vcpu_delay_seconds_total). Equivalent of "
@@ -414,6 +419,29 @@ def contention():
          [("topk($topn, 1000 * rate(kubevirt_vmi_storage_write_times_seconds_total%s[5m]) "
            "/ (rate(kubevirt_vmi_storage_iops_write_total%s[5m]) > 0))" % (F, F), "{{name}} {{drive}}")],
          unit="ms", thr=OK_WARN_BAD(20, 50), link=True)
+    d.ts("Longhorn read latency per VM (top N)", "Latency Longhorn itself measures per volume (the storage layer "
+         "under the VM disk), worst volume of each VM, in ms. Compare with the VM-level latency above: if only "
+         "this one is high, the problem is replicas/disks/network between nodes, not the guest.",
+         [("topk($topn, (%s) / 1e6)" % lh_vm("longhorn_volume_read_latency"), "{{name}}")], unit="ms",
+         thr=OK_WARN_BAD(20, 50), link=True)
+    d.ts("Longhorn write latency per VM (top N)", "As above for writes. Writes wait for every replica, so a slow "
+         "or rebuilding replica shows here first.",
+         [("topk($topn, (%s) / 1e6)" % lh_vm("longhorn_volume_write_latency"), "{{name}}")], unit="ms",
+         thr=OK_WARN_BAD(20, 50), link=True)
+    d.ts("Longhorn IOPS per VM (top N)", "Read + write IOPS of the VM's Longhorn volumes.",
+         [("topk($topn, %s)" % lh_vm("(longhorn_volume_read_iops + longhorn_volume_write_iops)", "sum"), "{{name}}")],
+         unit="iops", link=True)
+    d.ts("Node disk latency (worst device per node)", "Average time per I/O on the node's physical disks "
+         "(await). Equivalent of vSphere's physical device latency.",
+         [(disk_await(NJ), "{{nodename}}")], unit="ms", thr=OK_WARN_BAD(20, 50), w=12)
+    d.ts("Node disk utilisation (busiest device per node)", "% of time the busiest physical disk of the node had "
+         "I/O in flight. Sustained 90-100% means the disk is the bottleneck.",
+         [(disk_util(NJ), "{{nodename}}")], unit="percent", maxv=100, thr=OK_WARN_BAD(70, 90), w=12)
+    d.table("Degraded or faulted Longhorn volumes", "Volumes whose replicas are not all healthy. Detached "
+            "volumes report 'unknown' and are not listed. Empty is good.",
+            [("max by (pvc_namespace, pvc, state) (longhorn_volume_actual_size_bytes * on (volume) group_left "
+              "(state) (%s))" % UNHEALTHY_VOLS, "Actual size", "bytes", None)],
+            labels={"pvc_namespace": "Namespace", "pvc": "PVC", "state": "State"}, h=5)
     d.ts("VM I/O pressure (PSI, top N)", "% of time the VM's launcher cgroup waited for block I/O.",
          [("topk($topn, %s)" % launcher_psi("io"), "{{name}}")], unit="percent",
          thr=OK_WARN_BAD(10, 30), link=True)
@@ -851,6 +879,224 @@ def capacity():
     return d
 
 
+# --------------------------------------------------------------------------- Longhorn per VM + scorecard
+def lh_vm(metric_expr, agg="max", flt=F2):
+    """Map a per-volume Longhorn series to its VM through the PVC the VM disk uses (labels namespace, name)."""
+    return ('%s by (namespace, name) (label_replace(label_replace(%s, "namespace", "$1", "pvc_namespace", "(.*)"), '
+            '"persistentvolumeclaim", "$1", "pvc", "(.*)") * on (namespace, persistentvolumeclaim) group_left (name) '
+            '(max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes%s) * 0 + 1))'
+            % (agg, metric_expr, flt))
+
+
+DISKS = 'device=~"nvme[0-9]+n[0-9]+|sd[a-z]+"'
+UNHEALTHY_VOLS = 'longhorn_volume_robustness{state=~"degraded|faulted"} == 1'
+
+
+def disk_await(nj):
+    return ("max by (nodename) (1000 * (rate(node_disk_read_time_seconds_total{%s}[5m]) + "
+            "rate(node_disk_write_time_seconds_total{%s}[5m])) / (rate(node_disk_reads_completed_total{%s}[5m]) + "
+            "rate(node_disk_writes_completed_total{%s}[5m])) %s)" % (DISKS, DISKS, DISKS, DISKS, nj))
+
+
+def disk_util(nj):
+    return "max by (nodename) (100 * rate(node_disk_io_time_seconds_total{%s}[5m]) %s)" % (DISKS, nj)
+
+
+def scorecard():
+    ready = running("100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total%s[5m])) / (%s)"
+                    % (F2, VCPU))
+    gmem = running("100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes%s) "
+                   "/ max by (namespace, name) (kubevirt_vmi_memory_available_bytes%s))" % (F2, F2))
+    launcher = "max by (namespace, name) (%s)" % launcher_ws_pct()
+    vm_wlat = running("1000 * sum by (namespace, name) (rate(kubevirt_vmi_storage_write_times_seconds_total%s[5m])) "
+                      "/ (sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total%s[5m])) > 0)" % (F2, F2))
+    lh_wlat = running("(%s) / 1e6" % lh_vm("longhorn_volume_write_latency"))
+    drops = running(pair("rate", "kubevirt_vmi_network_receive_packets_dropped_total",
+                         "kubevirt_vmi_network_transmit_packets_dropped_total", F2))
+    unhealthy = lh_vm(UNHEALTHY_VOLS, "sum")
+    nobackup = lh_vm("(longhorn_volume_last_backup_at == bool 0)", "sum")
+    flag = lambda e, thr, name: 'label_replace((%s) > bool %s, "k", "%s", "", "")' % (e, thr, name)
+    flags = "sum by (namespace, name) (%s)" % " or ".join([
+        flag(ready, 5, "ready"), flag(gmem, 90, "mem"), flag(launcher, 90, "launcher"), flag(lh_wlat, 20, "lat"),
+        flag(drops, 10, "drops"), flag(unhealthy, 0, "volumes")])
+    d = Dash(
+        "harvester-vm-scorecard-v1", "Harvester VM Scorecard",
+        "One row per running VM: contention, storage health, backups and right-sizing in a single sortable table. "
+        "'Flags' counts the warning thresholds a VM is over. Blank means no data or none (for example no "
+        "qemu-guest-agent).",
+        ["harvester", "kubevirt", "scorecard"],
+        [var_ds(),
+         var_query("namespace", "Namespace", "label_values(kubevirt_vmi_info, namespace)", all_value=".*"),
+         var_query("vm", "VM", 'label_values(kubevirt_vmi_info{namespace=~"$namespace"}, name)', all_value=".+"),
+         var_window(), var_text("target", "Target utilisation % (sizing)", "70")],
+        links=[{"title": "VM Contention", "type": "link", "url": "/d/harvester-vm-contention-v1",
+                "icon": "external link", "targetBlank": False},
+               {"title": "Right-Sizing", "type": "link", "url": "/d/harvester-rightsizing-v1",
+                "icon": "external link", "targetBlank": False}])
+    d.row("Fleet")
+    d.stat("Running VMs", "VMs with a running instance in the selection.", "count(%s) or vector(0)" % VMI)
+    d.stat("VMs flagged", "Running VMs over at least one warning threshold.",
+           "count((%s) > 0) or vector(0)" % flags, thr=OK_WARN_BAD(1, 3))
+    d.stat("Unhealthy volumes", "Longhorn volumes that are degraded or faulted (detached volumes report 'unknown' "
+           "and are not counted).", "count(%s) or vector(0)" % UNHEALTHY_VOLS, thr=steps(("green", None), ("red", 1)))
+    d.stat("VM volumes never backed up", "Volumes of VM disks with no Longhorn backup ever recorded.",
+           "sum(%s) or vector(0)" % nobackup, thr=OK_WARN_BAD(1, 10))
+    d.row("VM scorecard (click a column header to sort; the VM name opens its detail dashboard)")
+    d.table("VM scorecard",
+            "Flags = number of these over their warning level: CPU Ready > 5%, guest memory > 90%, launcher memory "
+            "> 90% of limit, Longhorn write latency > 20 ms, network drops > 10/s, unhealthy volumes. The saving "
+            "columns come from the right-sizing dashboard (look-back window and target utilisation variables).",
+            [(flags, "Flags", "short", steps(("green", None), ("orange", 1), ("red", 3))),
+             (running(VCPU), "vCPUs", "short", None),
+             (running(MEM_ALLOC), "Mem", "bytes", None),
+             (running(pct_of_vcpus(CORES)), "CPU used %", "percent", steps(("green", None), ("orange", 70), ("red", 90))),
+             (ready, "CPU Ready %", "percent", steps(("green", None), ("orange", 5), ("red", 10))),
+             (gmem, "Guest mem %", "percent", steps(("green", None), ("orange", 80), ("red", 95))),
+             (launcher, "Launcher mem %", "percent", steps(("green", None), ("orange", 90), ("red", 98))),
+             (vm_wlat, "Disk write ms", "short", steps(("green", None), ("orange", 20), ("red", 50))),
+             (lh_wlat, "Longhorn write ms", "short", steps(("green", None), ("orange", 20), ("red", 50))),
+             (running(IOPS), "IOPS", "short", None),
+             (drops, "Net drops/s", "short", steps(("green", None), ("orange", 1), ("red", 10))),
+             (running(unhealthy), "Unhealthy vols", "short", steps(("green", None), ("red", 1))),
+             (running(nobackup), "No-backup vols", "short", steps(("green", None), ("orange", 1))),
+             (RECLAIM_VCPU, "vCPU saving", "short", None),
+             (RECLAIM_MEM, "Mem saving", "bytes", None),
+             (launcher_psi_by_vm("cpu"), "CPU PSI %", "percent", steps(("green", None), ("orange", 10), ("red", 25))),
+             (launcher_psi_by_vm("memory"), "Mem PSI %", "percent", steps(("green", None), ("orange", 1), ("red", 10))),
+             (launcher_psi_by_vm("io"), "I/O PSI %", "percent", steps(("green", None), ("orange", 10), ("red", 30)))],
+            sort=("Flags", True), vm_link=True, h=18)
+    return d
+
+
+def launcher_psi_by_vm(resource):
+    return "max by (namespace, name) (%s)" % launcher_psi(resource)
+
+
+# --------------------------------------------------------------------------- alert rules (PrometheusRule)
+# Thresholds are written as __TOKENS__ and substituted by the chart from values.yaml (alerts.thresholds).
+ALERT_TOKENS = {  # token -> (values key, default)
+    "CPU_READY_WARN": ("cpuReadyWarn", 5), "CPU_READY_CRIT": ("cpuReadyCritical", 10),
+    "GUEST_MEM": ("guestMemoryPercent", 95), "LAUNCHER_MEM": ("launcherMemoryPercent", 95),
+    "VM_DISK_LATENCY_MS": ("vmDiskLatencyMs", 50), "LH_LATENCY_MS": ("longhornLatencyMs", 50),
+    "NET_DROPS": ("vmNetworkDropsPerSecond", 10), "HOST_CPU_PSI": ("hostCpuPressurePercent", 30),
+    "HOST_MEM_PSI": ("hostMemoryPressurePercent", 10), "HOST_IO_PSI": ("hostIoPressurePercent", 40),
+    "HOST_REQ_MEM": ("hostMemoryRequestsPercent", 90), "LH_SCHED_WARN": ("longhornScheduledWarn", 90),
+    "LH_SCHED_CRIT": ("longhornScheduledCritical", 100), "LH_NODE_USED": ("longhornNodeUsedPercent", 80),
+    "DISK_AWAIT_MS": ("diskAwaitMs", 50), "DISK_UTIL": ("diskUtilPercent", 95),
+}
+NODE_NAME = "* on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)"
+
+
+def alert_rules():
+    vcpu = VCPU.replace(F2, "")
+    ready = "100 * sum by (namespace, name) (rate(kubevirt_vmi_vcpu_delay_seconds_total[5m])) / (%s)" % vcpu
+    gmem = ("100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes) "
+            "/ max by (namespace, name) (kubevirt_vmi_memory_available_bytes))")
+    lp = 'container="compute",pod=~"virt-launcher-.*"'
+    launcher = ('max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{%s} '
+                '/ on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory",%s}, '
+                '"name", "$1", "pod", "virt-launcher-(.*)-[a-z0-9]{5}"))' % (lp, lp))
+    vm_wlat = ("1000 * sum by (namespace, name) (rate(kubevirt_vmi_storage_write_times_seconds_total[5m])) / "
+               "(sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total[5m])) > 0)")
+    lh_lat = "(%s) / 1e6" % lh_vm("longhorn_volume_write_latency", flt="")
+    drops = pair("rate", "kubevirt_vmi_network_receive_packets_dropped_total",
+                 "kubevirt_vmi_network_transmit_packets_dropped_total", "")
+    psi = lambda r: "100 * rate(node_pressure_%s_waiting_seconds_total[5m]) %s" % (r, NODE_NAME)
+    n1 = "100 * sum(%s) / (sum(%s) - max(%s))" % (hosts(REQ_MEM), hosts(ALLOC_MEM), hosts(ALLOC_MEM))
+    lh_usable = "(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes)"
+
+    def rule(name, expr, for_, sev, summary, desc):
+        return {"alert": name, "expr": expr, "for": for_, "labels": {"severity": sev},
+                "annotations": {"summary": summary, "description": desc}}
+
+    vm = "VM {{ $labels.namespace }}/{{ $labels.name }}"
+    node = "node {{ $labels.nodename }}"
+    return {"groups": [
+        {"name": "harvester-extra.vm-contention", "rules": [
+            rule("HarvesterVMCPUReadyHigh", "(%s) > __CPU_READY_WARN__" % ready, "15m", "warning",
+                 vm + " is waiting for a CPU",
+                 vm + " has spent {{ $value | printf \"%.1f\" }}% of the time runnable but not scheduled for 15 minutes "
+                      "(warning above __CPU_READY_WARN__%). The host CPUs are oversubscribed; see the VM Contention dashboard."),
+            rule("HarvesterVMCPUReadyCritical", "(%s) > __CPU_READY_CRIT__" % ready, "10m", "critical",
+                 vm + " is starved of CPU",
+                 vm + " CPU Ready is {{ $value | printf \"%.1f\" }}% (critical above __CPU_READY_CRIT__%)."),
+            rule("HarvesterVMGuestMemoryHigh", "(%s) > __GUEST_MEM__" % gmem, "15m", "warning",
+                 vm + " is running out of memory",
+                 vm + " uses {{ $value | printf \"%.1f\" }}% of its memory (MemAvailable, page cache not counted; needs "
+                      "qemu-guest-agent). Above __GUEST_MEM__% for 15 minutes."),
+            rule("HarvesterVMLauncherMemoryNearLimit", "(%s) > __LAUNCHER_MEM__" % launcher, "10m", "critical",
+                 vm + " is close to being OOM-killed",
+                 "The virt-launcher of " + vm + " uses {{ $value | printf \"%.1f\" }}% of its memory limit. If it "
+                 "reaches the limit the VM is killed."),
+            rule("HarvesterVMLauncherOOMKilled",
+                 'increase(container_oom_events_total{%s}[10m]) > 0' % lp, "0m", "critical",
+                 "virt-launcher {{ $labels.pod }} was OOM-killed",
+                 "The VM behind pod {{ $labels.namespace }}/{{ $labels.pod }} hit its memory limit and was killed."),
+            rule("HarvesterVMDiskLatencyHigh", "(%s) > __VM_DISK_LATENCY_MS__" % vm_wlat, "10m", "warning",
+                 vm + " disk writes are slow",
+                 vm + " average write latency is {{ $value | printf \"%.0f\" }} ms (above __VM_DISK_LATENCY_MS__ ms)."),
+            rule("HarvesterVMLonghornLatencyHigh", "(%s) > __LH_LATENCY_MS__" % lh_lat, "10m", "warning",
+                 vm + " storage layer is slow",
+                 "Longhorn reports {{ $value | printf \"%.0f\" }} ms write latency on a volume of " + vm +
+                 " (above __LH_LATENCY_MS__ ms): check replicas, rebuilds and node disks."),
+            rule("HarvesterVMNetworkDrops", "(%s) > __NET_DROPS__" % drops, "10m", "warning",
+                 vm + " is dropping packets",
+                 vm + " drops {{ $value | printf \"%.1f\" }} packets/s on its vNICs."),
+        ]},
+        {"name": "harvester-extra.host-contention", "rules": [
+            rule("HarvesterNodeOOMKills",
+                 "(increase(node_vmstat_oom_kill[15m]) %s) > 0" % NODE_NAME, "0m", "warning",
+                 node + " killed processes for lack of memory",
+                 "{{ $value | printf \"%.0f\" }} OOM kills on " + node + " in the last 15 minutes (any pod or process)."),
+            rule("HarvesterHostMemoryPressure", "(%s) > __HOST_MEM_PSI__" % psi("memory"), "10m", "warning",
+                 node + " is under memory pressure",
+                 "Tasks on " + node + " waited for memory {{ $value | printf \"%.1f\" }}% of the time (PSI; needs "
+                 "psi=1 on the kernel command line)."),
+            rule("HarvesterHostCPUPressure", "(%s) > __HOST_CPU_PSI__" % psi("cpu"), "15m", "warning",
+                 node + " CPUs are saturated",
+                 "Runnable tasks on " + node + " waited for a CPU {{ $value | printf \"%.1f\" }}% of the time (PSI)."),
+            rule("HarvesterHostIOPressure", "(%s) > __HOST_IO_PSI__" % psi("io"), "15m", "warning",
+                 node + " is waiting on disk I/O",
+                 "Tasks on " + node + " waited for block I/O {{ $value | printf \"%.1f\" }}% of the time (PSI)."),
+            rule("HarvesterNodeDiskLatencyHigh", "(%s) > __DISK_AWAIT_MS__" % disk_await(NODE_NAME), "15m", "warning",
+                 node + " disks are slow",
+                 "Worst physical disk of " + node + " averages {{ $value | printf \"%.0f\" }} ms per I/O."),
+            rule("HarvesterNodeDiskBusy", "(%s) > __DISK_UTIL__" % disk_util(NODE_NAME), "30m", "warning",
+                 node + " has a saturated disk",
+                 "A physical disk of " + node + " has been busy {{ $value | printf \"%.0f\" }}% of the time."),
+        ]},
+        {"name": "harvester-extra.capacity-and-storage", "rules": [
+            rule("HarvesterMemoryN1Exceeded", "(%s) > 100" % n1, "1h", "warning",
+                 "The cluster cannot lose its biggest host",
+                 "Memory requests are {{ $value | printf \"%.0f\" }}% of what the cluster would have after losing "
+                 "its largest host: that host's workloads could not be rescheduled."),
+            rule("HarvesterHostMemoryRequestsHigh",
+                 "(100 * (%s) / on (node) (%s)) > __HOST_REQ_MEM__" % (hosts(REQ_MEM), hosts(ALLOC_MEM)), "30m", "warning",
+                 "Node {{ $labels.node }} memory is almost fully requested",
+                 "Pod memory requests on {{ $labels.node }} are {{ $value | printf \"%.0f\" }}% of its allocatable memory."),
+            rule("HarvesterLonghornSchedulingHigh",
+                 "(100 * sum(longhorn_node_storage_scheduled_bytes) / sum(%s)) > __LH_SCHED_WARN__" % lh_usable,
+                 "30m", "warning", "Longhorn storage is almost fully scheduled",
+                 "{{ $value | printf \"%.0f\" }}% of the usable disk space is already promised to volume replicas."),
+            rule("HarvesterLonghornSchedulingFull",
+                 "(100 * sum(longhorn_node_storage_scheduled_bytes) / sum(%s)) > __LH_SCHED_CRIT__" % lh_usable,
+                 "15m", "critical", "Longhorn cannot schedule more replicas",
+                 "{{ $value | printf \"%.0f\" }}% of the usable disk space is scheduled: new volumes and rebuilds can fail."),
+            rule("HarvesterLonghornNodeStorageHigh",
+                 "(100 * longhorn_node_storage_usage_bytes / %s) > __LH_NODE_USED__" % lh_usable, "30m", "warning",
+                 "Longhorn disks of node {{ $labels.node }} are filling up",
+                 "Node {{ $labels.node }} uses {{ $value | printf \"%.0f\" }}% of its Longhorn disk space."),
+            rule("HarvesterLonghornVolumeDegraded", 'longhorn_volume_robustness{state="degraded"} == 1', "30m", "warning",
+                 "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is degraded",
+                 "A replica of volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) is "
+                 "missing or still rebuilding for 30 minutes."),
+            rule("HarvesterLonghornVolumeFaulted", 'longhorn_volume_robustness{state="faulted"} == 1', "5m", "critical",
+                 "Longhorn volume {{ $labels.pvc_namespace }}/{{ $labels.pvc }} is faulted",
+                 "Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) has no healthy replica."),
+        ]},
+    ]}
+
+
 def main():
     global WITH_PSI
     manifest = []
@@ -859,7 +1105,8 @@ def main():
         os.makedirs(OUT[psi], exist_ok=True)
         panels = 0
         for name, dash in (("harvester-vm-contention", contention()), ("harvester-vm-detail-v2", detail()),
-                           ("harvester-rightsizing", rightsizing()), ("harvester-capacity", capacity())):
+                           ("harvester-rightsizing", rightsizing()), ("harvester-capacity", capacity()),
+                           ("harvester-vm-scorecard", scorecard())):
             with open(os.path.join(OUT[psi], name + ".json"), "w") as f:
                 json.dump(dash.d, f, indent=2)
                 f.write("\n")
@@ -867,6 +1114,10 @@ def main():
             if psi:  # the PSI variant is a superset, so it describes every panel
                 manifest += dash.manifest
         print("%-15s %d panels" % (os.path.basename(OUT[psi]), panels))
+    os.makedirs(os.path.join(CHART, "alerts"), exist_ok=True)
+    with open(os.path.join(CHART, "alerts", "harvester-extra-alerts.json"), "w") as f:
+        json.dump(alert_rules(), f, indent=2)
+        f.write("\n")
     with open(os.path.join(HERE, "required-metrics.json"), "w") as f:
         json.dump(manifest, f, indent=2)
         f.write("\n")

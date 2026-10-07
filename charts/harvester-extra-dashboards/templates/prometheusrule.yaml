@@ -1,0 +1,32 @@
+{{/*
+Alert rules, opt-in (alerts.enabled). The rule file is plain JSON read with .Files.Get; only the __TOKEN__ threshold
+placeholders are substituted, so Prometheus templates such as {{ $labels.name }} reach the PrometheusRule untouched.
+*/}}
+{{- if .Values.alerts.enabled }}
+{{- $t := .Values.alerts.thresholds }}
+{{- $tokens := dict
+      "CPU_READY_WARN" $t.cpuReadyWarn "CPU_READY_CRIT" $t.cpuReadyCritical
+      "GUEST_MEM" $t.guestMemoryPercent "LAUNCHER_MEM" $t.launcherMemoryPercent
+      "VM_DISK_LATENCY_MS" $t.vmDiskLatencyMs "LH_LATENCY_MS" $t.longhornLatencyMs
+      "NET_DROPS" $t.vmNetworkDropsPerSecond "HOST_CPU_PSI" $t.hostCpuPressurePercent
+      "HOST_MEM_PSI" $t.hostMemoryPressurePercent "HOST_IO_PSI" $t.hostIoPressurePercent
+      "HOST_REQ_MEM" $t.hostMemoryRequestsPercent "LH_SCHED_WARN" $t.longhornScheduledWarn
+      "LH_SCHED_CRIT" $t.longhornScheduledCritical "LH_NODE_USED" $t.longhornNodeUsedPercent
+      "DISK_AWAIT_MS" $t.diskAwaitMs "DISK_UTIL" $t.diskUtilPercent }}
+{{- $rules := .Files.Get "alerts/harvester-extra-alerts.json" }}
+{{- range $token, $value := $tokens }}
+{{- $rules = replace (printf "__%s__" $token) (toString $value) $rules }}
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ printf "%s-alerts" .Release.Name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ default .Release.Namespace .Values.alerts.namespace }}
+  labels:
+    {{- include "harvester-extra-dashboards.labels" . | nindent 4 }}
+    {{- with .Values.alerts.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- $rules | fromYaml | toYaml | nindent 2 }}
+{{- end }}
