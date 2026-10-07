@@ -803,7 +803,8 @@ def capacity():
          var_text("wi_overcommit", "Harvester memory overcommit (x)", "1.75"),
          var_text("wi_overhead", "QEMU overhead per VM GiB", "0.5"),
          var_text("wi_overprov", "Longhorn over-provisioning %", "200"),
-         var_text("wi_minfree", "Longhorn minimal available %", "20")],
+         var_text("wi_minfree", "Longhorn minimal available %", "20"),
+         var_text("wi_add", "What-if: VMs to add now", "0")],
         links=[{"title": "Right-Sizing", "type": "link", "url": "/d/harvester-rightsizing-v1",
                 "icon": "external link", "targetBlank": False},
                {"title": "VM Contention", "type": "link", "url": "/d/harvester-vm-contention-v1",
@@ -1173,6 +1174,8 @@ FIT_ALL = ('bottomk(1, label_replace(%s, "limit", "memory (N-1)", "", "") or lab
            % (FIT_MEM_N1, FIT_CPU_N1, FIT_SCHED, FIT_REAL))
 DAYS_FULL = ("((%s * (1 - $wi_minfree / 100) - %s) / (deriv((%s)[$window:1h]) > 0)) / 86400"
              % (LH_USABLE, LH_USED, LH_USED))
+DAYS_FULL_ADD = ("clamp_min(((%s * (1 - $wi_minfree / 100) - %s - $wi_add * %s * $wi_fill / 100) "
+                 "/ (deriv((%s)[$window:1h]) > 0)) / 86400, 0)" % (LH_USABLE, LH_USED, WI_DISK_BYTES, LH_USED))
 
 BF = '{namespace=~"$namespace"}'
 VOLMAP = "(max by (volume, pvc, pvc_namespace) (longhorn_volume_capacity_bytes) * 0 + 1)"
@@ -1202,10 +1205,14 @@ def whatif_panels(d):
     d.stat("Still fit (limit)", "The smallest of memory (N-1), CPU (N-1), Longhorn scheduling and real disk space, and "
            "which resource is the limit.", FIT_ALL, legend="{{limit}}", text="value_and_name",
            thr=steps(("red", None), ("orange", 1), ("green", 3)), w=6)
-    d.stat("Disk full in (days)", "Linear forecast: days until Longhorn used space reaches usable capacity minus the "
-           "minimal-available reserve at the growth rate of the look-back window. Blank when usage is not growing. Only "
-           "as good as the window (at most the 5 days Prometheus keeps).", DAYS_FULL, unit="suffix: days",
-           thr=steps(("red", None), ("orange", 30), ("green", 90)), w=6)
+    d.stat("Disk full in (days)", "Forecast for the cluster AS IT IS TODAY: days until Longhorn used space reaches usable "
+           "capacity minus the minimal-available reserve, at the growth rate of the look-back window. It does not depend on "
+           "the what-if VM. Blank when usage is not growing. Only as good as the window (at most the 5 days Prometheus "
+           "keeps).", DAYS_FULL, unit="suffix: days", thr=steps(("red", None), ("orange", 30), ("green", 90)), w=6)
+    d.stat("Disk full (+N VMs)", "The same forecast after adding 'What-if: VMs to add now' VMs of the what-if profile: their "
+           "disk x replicas x expected fill % is taken out of the free space first, then the same growth rate applies. With "
+           "0 VMs it equals the tile on the left; 0 days means the new VMs alone would fill the disk.", DAYS_FULL_ADD,
+           unit="suffix: days", thr=steps(("red", None), ("orange", 30), ("green", 90)), w=6)
 
 
 def backup():

@@ -17,7 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SAMPLE = {"namespace": "default", "vm": "vm1", "node": "node1", "topn": "10", "window": "3d", "target": "70",
           "idle_cpu": "5", "idle_net": "50", "idle_iops": "5", "under_cpu": "85", "under_mem": "90",
           "rpo_days": "7", "wi_vcpu": "4", "wi_mem": "8", "wi_disk": "100", "wi_replicas": "2", "wi_fill": "50",
-          "wi_overcommit": "1.75", "wi_overhead": "0.5", "wi_overprov": "200", "wi_minfree": "20"}
+          "wi_overcommit": "1.75", "wi_overhead": "0.5", "wi_overprov": "200", "wi_minfree": "20", "wi_add": "0"}
 
 errors = []
 exprs = 0

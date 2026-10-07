@@ -138,8 +138,11 @@ promise:
   (target % x host cores - host CPU p95 over the window) / (VM vCPUs x the average CPU use per vCPU of today's VMs).
 - *Longhorn scheduling* is (usable disk x over-provisioning % - scheduled) / (disk x replicas); *real disk space*
   keeps the minimal-available reserve and assumes new disks fill to the expected fill %.
-- *Days until full* extrapolates the growth of Longhorn used space linearly over the window (at most 5 days of data);
-  treat a restore or a large import inside the window as a spike, not a trend.
+- *Disk full in (days)* extrapolates the growth of Longhorn used space linearly over the window (at most 5 days of data)
+  for the cluster **as it is today**: it does not depend on the what-if VM. Treat a restore or a large import inside the
+  window as a spike, not a trend. *Disk full (+N VMs)* is the same forecast after taking the space of "VMs to add now"
+  (disk x replicas x fill %) out of the free space first; with 0 VMs the two tiles are equal, and 0 days means the new VMs
+  alone would fill the disk. On the lab: 20.8 days today, 8.0 days after adding 20 VMs of 100 GiB.
 
 **Backup & Protection.** `longhorn_volume_last_backup_at` is the epoch of the last backup (0 = never) and
 `longhorn_backup_state` is 0=New, 1=Pending, 2=InProgress, 3=Completed, 4=Error. VMs are mapped to volumes through the

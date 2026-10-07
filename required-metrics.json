@@ -828,6 +828,12 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
+    "panel": "Disk full (+N VMs)",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
     "panel": "Host CPU utilisation",
     "metrics": [
       "node_cpu_seconds_total",
