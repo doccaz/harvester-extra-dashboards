@@ -166,7 +166,7 @@
         },
         {
           "alert": "HarvesterNodeDiskBusy",
-          "expr": "(max by (nodename) (100 * rate(node_disk_io_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))) > __DISK_UTIL__",
+          "expr": "(max by (nodename) (clamp_max(100 * rate(node_disk_io_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]), 100) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))) > __DISK_UTIL__",
           "for": "30m",
           "labels": {
             "severity": "warning"

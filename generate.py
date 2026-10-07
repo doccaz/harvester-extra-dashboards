@@ -934,7 +934,9 @@ def disk_await(nj):
 
 
 def disk_util(nj):
-    return "max by (nodename) (100 * rate(node_disk_io_time_seconds_total{%s}[5m]) %s)" % (DISKS, nj)
+    """% of time the busiest disk of a node had I/O in flight. Clamped to 100: when a device resets its counters (a
+    disk that re-registers) rate() extrapolates the reset into values above 100% that no disk can have."""
+    return "max by (nodename) (clamp_max(100 * rate(node_disk_io_time_seconds_total{%s}[5m]), 100) %s)" % (DISKS, nj)
 
 
 def scorecard():
