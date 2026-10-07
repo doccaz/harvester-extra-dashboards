@@ -23,14 +23,10 @@ The two **per host** graphs plot provisioned vCPUs and allocated memory against 
 
 ## What-if: how many more VMs fit?
 
-![What-if row](images/capacity-whatif.jpg)
+![What-if row](images/capacity-whatif-titles.jpg)
 
-The screenshot shows the second row of tiles and the two forecast tiles. The first row has six tiles, left to
-right: *Fit: memory (now)*, *Fit: memory (N-1)*, *Fit: CPU (now)*, *Fit: CPU (N-1)*, *Fit: sched.* and *Fit: real disk*
-(the numbers visible at the top of the image, in that order).
-
-> **Screenshot to add:** `images/capacity-whatif-titles.jpg`, the whole what-if section with the tile titles of the first
-> row (scroll so the section heading is visible).
+The first row has six tiles, left to right: *Fit: memory (now)*, *Fit: memory (N-1)*, *Fit: CPU (now)*, *Fit: CPU (N-1)*,
+*Fit: sched.* and *Fit: real disk*. The second row holds the limiting resource and the two disk forecasts.
 
 Set the profile of the VM you want to add in the variables (vCPUs, memory GiB, disk GiB, Longhorn replicas,
 expected disk fill %) and the cluster settings the calculation depends on (Harvester memory overcommit, QEMU
@@ -67,8 +63,9 @@ has none.
 
 ## Storage efficiency (Longhorn)
 
-> **Screenshot to add:** `images/capacity-storage-efficiency.jpg`, the whole section: the three tiles, the node storage
-> graph and the three tables. Hide volume and namespace names (alias them) before adding it to the repo.
+![Storage efficiency: tiles and node storage](images/capacity-storage-efficiency.jpg)
+
+![Storage efficiency: tables](images/capacity-storage-tables.jpg)
 
 * **Thin usage**: actual size of Longhorn volumes over their capacity. **Volumes detached**: not attached to a
   workload right now (this includes the disks of stopped VMs).
