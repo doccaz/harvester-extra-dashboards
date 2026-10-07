@@ -29,10 +29,13 @@ K="kubectl --context local -n cattle-monitoring-system"
 PW=$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)
 printf 'alertmanager:%s' "$PW" | $K create secret generic mailpit-smtp --from-file=smtp-auth=/dev/stdin
 
-# 2. the catcher (it refuses logins without that credential)
+# 2. random web UI login, stored only in Secret mailpit-ui (format user:password)
+printf 'mailpit:%s' "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)" | $K create secret generic mailpit-ui --from-file=ui-auth=/dev/stdin
+
+# 3. the catcher and its Ingress (edit the hostname at the bottom of the file first)
 kubectl --context local apply -f docs/alertmanager/mailpit.yaml
 
-# 3. the Alertmanager config with the password filled in; back up the Secret, replace ONLY the alertmanager.yaml
+# 4. the Alertmanager config with the password filled in; back up the Secret, replace ONLY the alertmanager.yaml
 #    key (the Secret also holds rancher_defaults.tmpl). Validate first: amtool check-config <file>
 $K get secret alertmanager-rancher-monitoring-alertmanager -o yaml > alertmanager-secret.backup.yaml
 sed "s|CHANGE_ME|$PW|" docs/alertmanager/alertmanager.yaml > /tmp/am.yaml
@@ -40,15 +43,15 @@ python3 -c "import base64,json;print(json.dumps({'data':{'alertmanager.yaml':bas
 $K patch secret alertmanager-rancher-monitoring-alertmanager --type merge --patch-file /tmp/patch.json
 rm -f /tmp/am.yaml /tmp/patch.json; unset PW
 
-# 4. after about a minute: the receiver is loaded (the password shows as <secret>) and the reload succeeded
+# 5. after about a minute: the receiver is loaded (the password shows as <secret>) and the reload succeeded
 $K port-forward svc/rancher-monitoring-alertmanager 9093:9093 &
 curl -s localhost:9093/api/v2/status | jq -r '.config.original' | grep -A8 harvester-extra-email
 curl -s localhost:9093/metrics | grep alertmanager_config_last_reload_successful
 
-# 5. send a test alert; after the 30 s group_wait it is mailed to the catcher
+# 6. send a test alert; after the 30 s group_wait it is mailed to the catcher
 curl -s -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d \
  '[{"labels":{"alertname":"HarvesterTestAlert","severity":"warning","namespace":"labs"},"annotations":{"summary":"routing test"}}]'
-$K port-forward svc/mailpit-web 8025:8025 &      # open http://localhost:8025 (the web UI itself has no login)
+# open https://mailpit.conteudoquestionavel.org (after the Cloudflare step below), or: $K port-forward svc/mailpit-web 8025:8025
 ```
 
 Read the password back when you need it: `kubectl --context local -n cattle-monitoring-system get secret mailpit-smtp
@@ -57,28 +60,38 @@ Keep it out of git: `alertmanager.yaml` in this folder only has the `CHANGE_ME` 
 
 Undo: re-apply the backed-up Secret (`kubectl apply -f alertmanager-secret.backup.yaml`, after removing
 `resourceVersion`/`uid`/`creationTimestamp` if apply complains), then
-`kubectl --context local delete -f docs/alertmanager/mailpit.yaml` and `kubectl --context local -n cattle-monitoring-system delete secret mailpit-smtp`.
+`kubectl --context local delete -f docs/alertmanager/mailpit.yaml` and `kubectl --context local -n cattle-monitoring-system delete secret mailpit-smtp mailpit-ui`.
 
 ## Reading the mails
 
-The web UI shows the full text of every alert mail and has **no login of its own**, so it is not exposed. Read it with
-`kubectl --context local -n cattle-monitoring-system port-forward svc/mailpit-web 8025:8025` and open
-`http://localhost:8025`. The API works too: `curl localhost:8025/api/v1/messages`.
+The web UI is published by the Ingress in `mailpit.yaml` (`ingressClassName: nginx`, same shape as the `auth` and `kasten`
+Ingresses: default certificate of the controller) and protected by its own login, **user `mailpit`**, random 40-character
+password in Secret `mailpit-ui`:
 
-Tested on the lab: after deleting the pod the new one (volume re-attached) still lists the earlier messages, and while
-the catcher was down Alertmanager kept retrying and delivered once it was back.
+```bash
+kubectl --context local -n cattle-monitoring-system get secret mailpit-ui -o jsonpath='{.data.ui-auth}' | base64 -d
+```
+
+**Cloudflare:** the lab is published through a remotely managed `cloudflared` tunnel (`TUNNEL_TOKEN`; its routes live in
+Cloudflare Zero Trust, not in the cluster). Add a *Public hostname* to that tunnel: hostname
+`mailpit.conteudoquestionavel.org`, service `https://192.168.86.250` (the Harvester VIP), under *Additional application
+settings > TLS* turn **No TLS Verify** on (the VIP presents a self-signed certificate), exactly like the existing lab
+hostnames. Cloudflare creates the DNS record. Until then the Ingress can be tested from the LAN:
+`curl -sk --resolve mailpit.conteudoquestionavel.org:443:192.168.86.250 -u mailpit:... https://mailpit.conteudoquestionavel.org/api/v1/messages`.
+
+Tested on the lab through the VIP with that hostname: no credentials, a wrong password and a wrong user get 401; the real
+credential gets the page, its assets and the API (200). After deleting the pod the new one still lists the earlier
+messages, and while the catcher was down Alertmanager kept retrying and delivered once it was back.
+
+**Think before publishing it:** the page shows the full text of every alert mail. It is on the public internet once
+the hostname exists, behind HTTP basic auth only. The 40-character random password makes guessing impractical, but
+consider putting **Cloudflare Access** (an Access application on that hostname) in front, and rotate the password by
+recreating Secret `mailpit-ui` and restarting the deployment. `kubectl port-forward svc/mailpit-web 8025:8025` still works.
 
 **Why not through the Harvester/Kubernetes API proxy** (the way Grafana is reached)? Mailpit needs its `--webroot` in
 the request path, but the proxy strips the prefix before forwarding, so the page's API calls end up in the wrong place
 (and the proxy's HTML link rewriting would add a second prefix). Grafana only works there because it can generate
-prefixed URLs while serving from `/`. An Ingress with its own hostname has no such problem; see below.
-
-**If you want an Ingress:** the cluster has the `nginx` class on the Harvester VIP, but the VIP presents a
-self-signed certificate for every name, your public hostnames (`*.conteudoquestionavel.org`) resolve to Cloudflare, and
-cert-manager has no issuer. So an Ingress means choosing a hostname (a LAN-only name such as
-`mailpit.<VIP>.nip.io` needs no DNS change; a public name needs a DNS/tunnel entry of yours), accepting a self-signed
-certificate or adding an issuer, and turning on Mailpit's own login (`MP_UI_AUTH`), because this page reveals alert
-details. Not done here.
+prefixed URLs while serving from `/`.
 
 ## Notes and caveats
 
