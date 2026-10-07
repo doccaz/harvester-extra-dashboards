@@ -157,9 +157,10 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Memory balloon (non-zero VMs)",
+    "panel": "Memory reclaimed by balloon (non-zero VMs)",
     "metrics": [
-      "kubevirt_vmi_memory_actual_balloon_bytes"
+      "kubevirt_vmi_memory_actual_balloon_bytes",
+      "kubevirt_vmi_memory_domain_bytes"
     ],
     "psi": false
   },

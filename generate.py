@@ -66,9 +66,12 @@ def launcher_name(expr):
 
 
 def launcher_ws_pct():
+    # both sides aggregated: after a kube-state-metrics or kubelet restart two series per pod briefly coexist and a plain
+    # one-to-one match fails with "found duplicate series" (only visible in range queries over a long enough window)
     return launcher_name(
-        '100 * container_memory_working_set_bytes{%s} '
-        '/ on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory",%s}' % (LP, LP))
+        '100 * max by (namespace, pod, container) (container_memory_working_set_bytes{%s}) '
+        '/ on (namespace, pod, container) max by (namespace, pod, container) '
+        '(kube_pod_container_resource_limits{resource="memory",%s})' % (LP, LP))
 
 
 def expand_alternation(pattern):
@@ -398,10 +401,12 @@ def contention():
          "(kubevirt_vmi_memory_pgmajfault_total). Rising values mean the guest is thrashing.",
          [("topk($topn, sum by (namespace, name) (rate(kubevirt_vmi_memory_pgmajfault_total%s[5m])))" % F,
            "{{name}}")], unit="ops", link=True)
-    d.ts("Memory balloon (non-zero VMs)", "Balloon size per VM (kubevirt_vmi_memory_actual_balloon_bytes). "
-         "Harvester does not reclaim through the balloon by default, so empty is normal; vSphere 'Ballooned' "
-         "has no routine equivalent here.",
-         [("kubevirt_vmi_memory_actual_balloon_bytes%s > 0" % F, "{{name}}")], unit="bytes", link=True)
+    d.ts("Memory reclaimed by balloon (non-zero VMs)", "Memory the hypervisor took back from the guest through the "
+         "balloon: domain memory minus the current balloon size (kubevirt_vmi_memory_actual_balloon_bytes is the size the "
+         "guest currently has, not what was reclaimed). Harvester does not inflate balloons by default, so empty is normal; "
+         "vSphere 'Ballooned' has no routine equivalent here.",
+         [("(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes%s) - max by (namespace, name) "
+           "(kubevirt_vmi_memory_actual_balloon_bytes%s)) > 0" % (F, F), "{{name}}")], unit="bytes", link=True)
     d.ts("virt-launcher memory vs limit % (top N)", "Working set of the VM's launcher container as % of its "
          "memory limit. Near 100% means the launcher (guest RAM + QEMU overhead) is about to be OOM-killed.",
          [("topk($topn, %s)" % launcher_ws_pct(), "{{name}}")], unit="percent", maxv=110,
@@ -1024,8 +1029,9 @@ def alert_rules():
     gmem = ("100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes) "
             "/ max by (namespace, name) (kubevirt_vmi_memory_available_bytes))")
     lp = 'container="compute",pod=~"virt-launcher-.*"'
-    launcher = ('max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{%s} '
-                '/ on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory",%s}, '
+    launcher = ('max by (namespace, name) (label_replace(100 * max by (namespace, pod, container) '
+                '(container_memory_working_set_bytes{%s}) / on (namespace, pod, container) max by (namespace, pod, '
+                'container) (kube_pod_container_resource_limits{resource="memory",%s}), '
                 '"name", "$1", "pod", "virt-launcher-(.*)-[a-z0-9]{5}"))' % (lp, lp))
     vm_wlat = ("1000 * sum by (namespace, name) (rate(kubevirt_vmi_storage_write_times_seconds_total[5m])) / "
                "(sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total[5m])) > 0)")

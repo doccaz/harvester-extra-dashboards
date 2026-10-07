@@ -54,6 +54,7 @@ ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<rele
 - `validate.py`: offline checks of both variants (JSON, uids, variables, every dashboard and alert PromQL expression parses, PSI variant is a superset, every alert token is handled by the template). `pip install promql-parser`.
 - `tests/chart_check.py`: renders the chart in several configurations and asserts the ConfigMap content is byte-identical to the source JSON, and that the alerts render with substituted thresholds and untouched `{{ $labels }}` templates. `pip install pyyaml`; needs `helm`.
 - `verify-metrics.py`: run against a live Prometheus; reports which panels lack metrics, plus the label/join assumptions.
+- `verify-queries.py`: run against a live Prometheus; executes every dashboard query the way Grafana does (6 h range for graphs, instant for tiles and tables) and every alert expression, and fails on any error. It exists because `validate.py` (syntax) and instant queries both missed a `found duplicate series` error that only shows in a long range after a kube-state-metrics restart.
 - `apply.sh`: Helm-less alternative that loads the dashboard JSON as ConfigMaps (not the alerts); `--psi` selects the PSI variant, `--delete` removes them.
 - `docs/alertmanager/`: how to email the alerts (a tested Alertmanager route and receiver). The default Harvester Alertmanager sends alerts nowhere.
 - `docs/mailpit/`: the lab's mail sink (Mailpit with persistent storage, two random logins and an Ingress) that makes the alert emails readable in a browser; manifest, install, operations and troubleshooting.
@@ -62,6 +63,7 @@ ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<rele
 python3 generate.py && python3 validate.py && python3 tests/chart_check.py && helm lint charts/harvester-extra-dashboards
 kubectl -n cattle-monitoring-system port-forward svc/rancher-monitoring-prometheus 9090 &
 python3 verify-metrics.py http://localhost:9090
+python3 verify-queries.py http://localhost:9090
 ```
 
 CI (`.github/workflows/ci.yaml`) runs the same checks and fails if the committed JSON differs from what

@@ -585,7 +585,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "count((label_replace(100 * container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\")) > 90) or vector(0)",
+          "expr": "count((label_replace(100 * max by (namespace, pod, container) (container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\")) > 90) or vector(0)",
           "legendFormat": "",
           "range": false,
           "instant": true
@@ -1510,8 +1510,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Memory balloon (non-zero VMs)",
-      "description": "Balloon size per VM (kubevirt_vmi_memory_actual_balloon_bytes). Harvester does not reclaim through the balloon by default, so empty is normal; vSphere 'Ballooned' has no routine equivalent here.",
+      "title": "Memory reclaimed by balloon (non-zero VMs)",
+      "description": "Memory the hypervisor took back from the guest through the balloon: domain memory minus the current balloon size (kubevirt_vmi_memory_actual_balloon_bytes is the size the guest currently has, not what was reclaimed). Harvester does not inflate balloons by default, so empty is normal; vSphere 'Ballooned' has no routine equivalent here.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1530,7 +1530,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "kubevirt_vmi_memory_actual_balloon_bytes{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"} > 0",
+          "expr": "(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"}) - max by (namespace, name) (kubevirt_vmi_memory_actual_balloon_bytes{namespace=~\"$namespace\",name=~\"$vm\",node=~\"$node\"})) > 0",
           "legendFormat": "{{name}}",
           "range": true,
           "instant": false
@@ -1607,7 +1607,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk($topn, label_replace(100 * container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
+          "expr": "topk($topn, label_replace(100 * max by (namespace, pod, container) (container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\",namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))",
           "legendFormat": "{{name}}",
           "range": true,
           "instant": false

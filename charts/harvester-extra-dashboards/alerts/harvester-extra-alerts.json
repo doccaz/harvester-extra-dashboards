@@ -41,7 +41,7 @@
         },
         {
           "alert": "HarvesterVMLauncherMemoryNearLimit",
-          "expr": "(max by (namespace, name) (label_replace(100 * container_memory_working_set_bytes{container=\"compute\",pod=~\"virt-launcher-.*\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",container=\"compute\",pod=~\"virt-launcher-.*\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > __LAUNCHER_MEM__",
+          "expr": "(max by (namespace, name) (label_replace(100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container=\"compute\",pod=~\"virt-launcher-.*\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\",container=\"compute\",pod=~\"virt-launcher-.*\"}), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > __LAUNCHER_MEM__",
           "for": "10m",
           "labels": {
             "severity": "critical"

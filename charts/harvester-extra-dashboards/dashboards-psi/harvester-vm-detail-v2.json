@@ -435,7 +435,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "label_replace(100 * container_memory_working_set_bytes{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"} / on (namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\",namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}, \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\")",
+          "expr": "label_replace(100 * max by (namespace, pod, container) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\",namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\")",
           "legendFormat": "",
           "range": false,
           "instant": true
