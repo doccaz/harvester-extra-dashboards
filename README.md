@@ -1,11 +1,12 @@
 # harvester-extra-dashboards
 
-Extra Grafana dashboards for Harvester (SUSE Virtualization): VM contention, right-sizing and capacity/reclaim.
+Extra Grafana dashboards and alerts for Harvester (SUSE Virtualization): VM contention, right-sizing, capacity/reclaim, a VM scorecard and 21 opt-in alert rules, packaged as a Helm chart.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that
 close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, launcher OOM
-risk, storage latency (pressure/PSI panels are opt-in, see below). Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring`
-108.0.2+up77.9.1). Verified against a Harvester v1.8.2 lab (see "Live check"); not yet tested under load.
+risk, storage latency (including Longhorn and node disks), right-sizing and capacity (pressure/PSI panels are opt-in, see below).
+Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring` 108.0.2+up77.9.1). Verified against a Harvester v1.8.2 lab
+(see "Live check"); not yet tested under a real incident.
 
 | Dashboard (uid) | Answers |
 |---|---|
@@ -18,7 +19,7 @@ risk, storage latency (pressure/PSI panels are opt-in, see below). Target: **Har
 ## Install
 
 Needs the Harvester `rancher-monitoring` add-on enabled (Grafana's sidecar loads ConfigMaps labelled
-`grafana_dashboard=1` from `cattle-dashboards`). The chart only creates those ConfigMaps, no hooks, RBAC or images.
+`grafana_dashboard=1` from `cattle-dashboards`). The chart only creates those ConfigMaps (and, if you opt in with `alerts.enabled`, one PrometheusRule): no hooks, RBAC or images.
 
 ```bash
 # from a clone of this repo
@@ -47,12 +48,13 @@ ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<rele
 
 ## Files
 
-- `charts/harvester-extra-dashboards/`: the Helm chart. `dashboards/` and `dashboards-psi/` hold the generated JSON of the two variants.
-- `generate.py`: **source of truth.** Writes both variants into the chart and `required-metrics.json` (per-panel list of metrics; PSI-only panels are flagged). Do not edit the JSON by hand.
-- `validate.py`: offline checks of both variants (JSON, uids, variables, every PromQL expression parses, PSI variant is a superset). `pip install promql-parser`.
-- `tests/chart_check.py`: renders the chart in several configurations and asserts the ConfigMap content is byte-identical to the source JSON. `pip install pyyaml`; needs `helm`.
+- `charts/harvester-extra-dashboards/`: the Helm chart. `dashboards/` and `dashboards-psi/` hold the generated JSON of the two variants, `alerts/` the generated alert rules (JSON).
+- `generate.py`: **source of truth** for the dashboards and the alert rules. Writes both variants and the rules into the chart and `required-metrics.json` (per-panel list of metrics; PSI-only panels are flagged). Do not edit the generated JSON by hand.
+- `validate.py`: offline checks of both variants (JSON, uids, variables, every dashboard and alert PromQL expression parses, PSI variant is a superset, every alert token is handled by the template). `pip install promql-parser`.
+- `tests/chart_check.py`: renders the chart in several configurations and asserts the ConfigMap content is byte-identical to the source JSON, and that the alerts render with substituted thresholds and untouched `{{ $labels }}` templates. `pip install pyyaml`; needs `helm`.
 - `verify-metrics.py`: run against a live Prometheus; reports which panels lack metrics, plus the label/join assumptions.
-- `apply.sh`: Helm-less alternative that loads the JSON as ConfigMaps; `--psi` selects the PSI variant, `--delete` removes them.
+- `apply.sh`: Helm-less alternative that loads the dashboard JSON as ConfigMaps (not the alerts); `--psi` selects the PSI variant, `--delete` removes them.
+- `docs/alertmanager/`: how to email the alerts (a tested Alertmanager route and receiver, and an in-cluster mail catcher with persistent storage, a login and an Ingress). The default Harvester Alertmanager sends alerts nowhere.
 
 ```
 python3 generate.py && python3 validate.py && python3 tests/chart_check.py && helm lint charts/harvester-extra-dashboards
@@ -98,7 +100,8 @@ Both dashboards are for **decisions**, not alerts: they list candidates and a su
 default** because it starts firing in Alertmanager, whose routes decide who is notified (the Harvester Prometheus
 selects rules from every namespace, so no extra wiring is needed to see them in the Prometheus and Alertmanager UIs).
 Thresholds are values (`alerts.thresholds.*`); the rule text is never templated, so `{{ $labels.name }}` reaches
-Prometheus intact.
+Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver, so nobody is notified**: see
+[`docs/alertmanager/`](docs/alertmanager/README.md) for a tested email route and a mail catcher you can read in a browser.
 
 | Group | Alerts |
 |---|---|
@@ -145,23 +148,31 @@ guest or the virtual disk path.
   `available - unused`, which counts page cache as used, and `IO Time` plots the raw time counter, not a latency.
 - Prometheus in the add-on: scrape 1m, retention 5d / 50 GiB. Hence `[5m]` windows and no multi-week panels.
 
-## Live check (lab, Harvester v1.8.2, 2026-10-06)
+## Live check (lab, Harvester v1.8.2, 2026-10-06 and 2026-10-07)
 
-`verify-metrics.py` plus every panel query executed against the lab Prometheus: all 43 default panels
-return series (or a legitimately empty result on an idle VM) with no query errors.
+`verify-metrics.py` plus every panel and alert query executed against the lab Prometheus: all 87 default panels (97 in
+the PSI variant) and all 21 alert expressions run without query errors, and all 65 metrics they use exist. The dashboards
+were then opened in Grafana (through the Harvester API proxy) and the problems that only show there were fixed.
 
-- `kubevirt_vmi_vcpu_delay_seconds_total` is emitted (67 series), so CPU Ready works. Guest-agent memory,
-  launcher limits, CFS and OOM counters and the `node_uname_info` join on `instance` all work.
-- Bug found only by running the queries: one `{__name__=~"a|b"}` selector under `rate()`/`delta()` makes
-  Prometheus return HTTP 422 (identical labelsets once the name is dropped). Now summed per metric (`pair()`).
+- `kubevirt_vmi_vcpu_delay_seconds_total` is emitted, so CPU Ready works. Guest-agent memory, launcher limits, CFS and
+  OOM counters, Longhorn per-volume metrics and the `node_uname_info` join on `instance` all work.
+- Found only by running the queries: one `{__name__=~"a|b"}` selector under `rate()`/`delta()` makes Prometheus return
+  HTTP 422 (identical labelsets once the name is dropped), now summed per metric (`pair()`); duplicate
+  `node_uname_info` series over a long window do the same, now collapsed with `max by (instance, nodename)`.
+- Found only by looking at Grafana: tables built from raw series showed stray label columns and pushed the values out of
+  view; the node-disk await formula gave +Inf on idle disks (also in an alert); tile titles were truncated.
 - **Stock CPU panel is wrong:** for one VM the stock v1.8.2 expression (`.../ 1000`) gives 0.0000055 where the
   underlying rate is 0.0055. The collector emits seconds, so it under-reports by 1000x.
-- **PSI is off on the lab nodes**, so the pressure panels are not part of the default dashboards (next section).
-- The lab was idle, so the thresholds have not been exercised under load.
+- Longhorn latency metrics are in **nanoseconds**; `longhorn_volume_state` and `longhorn_volume_robustness` are one
+  series per state (label `state`, value 0/1) and detached volumes report robustness `unknown`.
+- What the lab showed: CPU Ready peaked near 17% while VMs were bunched on fewer hosts during node reboots, the busiest
+  disk of one node sat at 100% for stretches (await up to ~250 ms), memory requests are 145% of what would remain after
+  losing the biggest host, 40 of 50 Longhorn volumes have never been backed up, and `harv01lab` had 20 kernel OOM kills.
+- PSI is now enabled on all three lab nodes (next section) and its panels show data.
 
 ## Pressure (PSI) panels: kernel prerequisite
 
-**State.** The v1.8.2 nodes (kernel 6.12.0-160000.36-default) have PSI compiled in but switched off at boot:
+**State before enabling (2026-10-06).** The v1.8.2 nodes (kernel 6.12.0-160000.36-default) have PSI compiled in but switched off at boot:
 `/proc/pressure` does not exist, the kernel command line has no `psi=`, node-exporter exports no
 `node_pressure_*`, and every cAdvisor `container_pressure_*` series (3990, all zero) has been exactly 0 for
 the whole 5-day history. (cAdvisor exports the series regardless, so their existence proves nothing.)
@@ -180,7 +191,7 @@ Harvester's OS kernel matches the SLES 16.0 behaviour; I did not find a Harveste
   all series, ~66 samples/s, ~11 MB/day, ~56 MB over 5d retention) are **already ingested today** as zeros, so
   enabling PSI adds no series, only less compressible values (my estimate: a few times that, tens of MB/day).
 
-**How to enable (not applied on the lab; the order matters).**
+**How to enable (this is how it was enabled on the three lab nodes on 2026-10-07; the order matters).**
 
 Harvester has a supported, upgrade-safe place for extra kernel arguments: the GRUB variable
 `third_party_kernel_args` in `/oem/grubenv` (the persistent OEM partition). The v1.8.2 `bootargs.cfg` appends
@@ -220,20 +231,27 @@ comes from the code; the docs do not state it explicitly.)
    (or `./apply.sh --psi`) adds the 10 PSI panels and tiles. Each panel only has data for the nodes that already
    run with `psi=1`.
 
-**Verified on one node (2026-10-06).** After setting `psi=1` on `harvlab-witness` only: `node_pressure_*` (5 series)
+**Verified on one node first (2026-10-06).** After setting `psi=1` on `harvlab-witness` only: `node_pressure_*` (5 series)
 and non-zero cAdvisor pressure appeared for that node within minutes, with no node-exporter change, while the other
 two nodes stayed at exactly 0. With the PSI variant installed the host panels showed that node (CPU "some" 2.2%,
 I/O "some" 38.7% / "full" 31.9%, memory 0); the per-VM panels stay at 0 until the nodes running the VMs are switched.
 
+**Result on all three nodes (2026-10-07).** After the reboots, `node_pressure_*` is exported for every node and the
+cAdvisor per-VM pressure series are non-zero, again without touching node-exporter. The "Max VM memory/CPU PSI" tiles and
+the per-VM and host pressure panels show real values, and the three host pressure alerts are live.
+
 ## Open items
 
-1. Decide whether to enable PSI (above); until then the default dashboards have no pressure panels.
-2. Load test one VM (CPU and memory stress) to see CPU Ready and guest memory react.
-3. Guest-agent metrics exist only for VMs running qemu-guest-agent (10 VMIs report `usable` here).
-4. Right-sizing and capacity dashboards: every query was run against the lab Prometheus (the tables' merged
-   columns were checked row by row, including with loosened thresholds), but the Grafana rendering of the tables
-   (column order, cell colours, sorting, VM links) was checked in Grafana on 2026-10-07 and fixed (stray label columns, truncated titles); re-check after upgrading.
-5. Their conclusions rest on 5 days of data; see "Right-sizing and capacity: how to read them".
+1. Load test one VM (CPU and memory stress) to see CPU Ready, PSI and guest memory react under a real incident; the lab
+   has only been idle or rebooting, so no alert threshold has been tuned against a genuine problem.
+2. Right-sizing conclusions rest on 5 days of Prometheus data and on qemu-guest-agent for memory; see "Right-sizing and
+   capacity: how to read them".
+3. Alertmanager: the default config notifies nobody. `docs/alertmanager/` is applied on the lab (mail catcher, behind
+   its own login and a Cloudflare-tunnelled Ingress), but the Alertmanager config Secret may be reset by an add-on
+   redeploy (untested), and the catcher page is protected by a password only (a Cloudflare Access policy is advisable).
+4. Gaps against VMware's tools that are not built: capacity what-if / time-to-full (needs longer retention), snapshot
+   and backup hygiene beyond "volumes never backed up" (Harvester does not export snapshot metrics), showback by
+   namespace, a DRS-like balance and migration view, and longer metric retention (an add-on change).
 
 ## Releasing
 
