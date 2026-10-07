@@ -154,7 +154,7 @@
         },
         {
           "alert": "HarvesterNodeDiskLatencyHigh",
-          "expr": "(max by (nodename) (1000 * (rate(node_disk_read_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) + rate(node_disk_write_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m])) / (rate(node_disk_reads_completed_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) + rate(node_disk_writes_completed_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))) > __DISK_AWAIT_MS__",
+          "expr": "(max by (nodename) (1000 * (rate(node_disk_read_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) + rate(node_disk_write_time_seconds_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m])) / ((rate(node_disk_reads_completed_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m]) + rate(node_disk_writes_completed_total{device=~\"nvme[0-9]+n[0-9]+|sd[a-z]+\"}[5m])) > 0) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))) > __DISK_AWAIT_MS__",
           "for": "15m",
           "labels": {
             "severity": "warning"

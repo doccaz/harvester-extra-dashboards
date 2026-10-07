@@ -354,7 +354,7 @@
     },
     {
       "type": "stat",
-      "title": "VM volumes never backed up",
+      "title": "Never backed up",
       "description": "Volumes of VM disks with no Longhorn backup ever recorded.",
       "datasource": {
         "type": "prometheus",
@@ -678,6 +678,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }

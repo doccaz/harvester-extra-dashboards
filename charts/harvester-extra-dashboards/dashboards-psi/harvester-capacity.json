@@ -956,6 +956,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
@@ -1380,6 +1381,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
@@ -1780,10 +1782,12 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
-          }
+          },
+          "noValue": "None found"
         },
         "overrides": [
           {
@@ -1897,6 +1901,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
@@ -2032,10 +2037,12 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
-          }
+          },
+          "noValue": "None found"
         },
         "overrides": [
           {

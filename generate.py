@@ -195,6 +195,15 @@ class Dash:
 
 
 
+TABLE_EMPTY = {
+    "Degraded or faulted Longhorn volumes": "All volumes are healthy",
+    "Idle VM candidates": "No idle VMs at these thresholds",
+    "Under-sized VM candidates": "No under-sized VMs at these thresholds",
+    "PVCs used by neither a VM nor a pod (candidates)": "None found",
+    "Large, mostly empty guest filesystems": "None found",
+}
+
+
 def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=False):
     """Table fed by instant queries that share the same label set. cols = [(expr, header, unit, thresholds)].
     The queries are joined with the `merge` transformation, so every expression must aggregate by the same
@@ -232,8 +241,9 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
                 "Time", "__name__", "container", "endpoint", "instance", "job", "pod", "service", "prometheus")},
                                            "renameByName": rename,
                                            "indexByName": order}}],
-        "fieldConfig": {"defaults": {"custom": {"align": "auto", "filterable": True,
-                                                "cellOptions": {"type": "auto"}}},
+        "fieldConfig": {"defaults": {"custom": {"align": "auto", "filterable": True, "minWidth": 60,
+                                                "cellOptions": {"type": "auto"}},
+                                     **({"noValue": TABLE_EMPTY[title]} if title in TABLE_EMPTY else {})},
                         "overrides": overrides},
         "options": {"showHeader": True, "cellHeight": "sm", "footer": {"show": False},
                     "sortBy": [{"displayName": sort[0], "desc": sort[1]}] if sort else []},
@@ -893,9 +903,11 @@ UNHEALTHY_VOLS = 'longhorn_volume_robustness{state=~"degraded|faulted"} == 1'
 
 
 def disk_await(nj):
+    """Average ms per I/O of the worst disk per node. Idle disks (no I/O) yield no sample instead of +Inf."""
+    io = ("(rate(node_disk_reads_completed_total{%s}[5m]) + rate(node_disk_writes_completed_total{%s}[5m]))"
+          % (DISKS, DISKS))
     return ("max by (nodename) (1000 * (rate(node_disk_read_time_seconds_total{%s}[5m]) + "
-            "rate(node_disk_write_time_seconds_total{%s}[5m])) / (rate(node_disk_reads_completed_total{%s}[5m]) + "
-            "rate(node_disk_writes_completed_total{%s}[5m])) %s)" % (DISKS, DISKS, DISKS, DISKS, nj))
+            "rate(node_disk_write_time_seconds_total{%s}[5m])) / (%s > 0) %s)" % (DISKS, DISKS, io, nj))
 
 
 def disk_util(nj):
@@ -939,7 +951,7 @@ def scorecard():
            "count((%s) > 0) or vector(0)" % flags, thr=OK_WARN_BAD(1, 3))
     d.stat("Unhealthy volumes", "Longhorn volumes that are degraded or faulted (detached volumes report 'unknown' "
            "and are not counted).", "count(%s) or vector(0)" % UNHEALTHY_VOLS, thr=steps(("green", None), ("red", 1)))
-    d.stat("VM volumes never backed up", "Volumes of VM disks with no Longhorn backup ever recorded.",
+    d.stat("Never backed up", "Volumes of VM disks with no Longhorn backup ever recorded.",
            "sum(%s) or vector(0)" % nobackup, thr=OK_WARN_BAD(1, 10))
     d.row("VM scorecard (click a column header to sort; the VM name opens its detail dashboard)")
     d.table("VM scorecard",

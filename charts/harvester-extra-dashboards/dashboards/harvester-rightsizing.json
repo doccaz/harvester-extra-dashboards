@@ -951,10 +951,12 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
-          }
+          },
+          "noValue": "No idle VMs at these thresholds"
         },
         "overrides": [
           {
@@ -1282,6 +1284,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
@@ -1639,10 +1642,12 @@
           "custom": {
             "align": "auto",
             "filterable": true,
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
-          }
+          },
+          "noValue": "No under-sized VMs at these thresholds"
         },
         "overrides": [
           {
