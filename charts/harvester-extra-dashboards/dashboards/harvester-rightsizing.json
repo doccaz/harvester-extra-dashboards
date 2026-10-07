@@ -951,7 +951,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -970,7 +970,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 74
               }
             ]
@@ -986,7 +986,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 82
               },
               {
@@ -1006,7 +1006,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1026,7 +1026,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1046,7 +1046,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 146
               }
             ]
@@ -1062,7 +1062,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 98
               }
             ]
@@ -1074,7 +1074,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -1086,7 +1086,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -1320,7 +1320,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -1338,7 +1338,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 74
               }
             ]
@@ -1354,7 +1354,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1374,7 +1374,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1394,7 +1394,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               },
               {
@@ -1414,7 +1414,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 122
               }
             ]
@@ -1430,7 +1430,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 122
               },
               {
@@ -1477,7 +1477,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 72
               },
               {
@@ -1497,7 +1497,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 90
               },
               {
@@ -1517,7 +1517,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1537,7 +1537,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               },
               {
@@ -1553,7 +1553,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -1565,7 +1565,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -1734,7 +1734,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -1753,7 +1753,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 74
               }
             ]
@@ -1769,7 +1769,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1820,7 +1820,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               },
               {
@@ -1840,7 +1840,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 82
               },
               {
@@ -1860,7 +1860,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 130
               },
               {
@@ -1907,7 +1907,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -1919,7 +1919,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]

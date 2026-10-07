@@ -1038,7 +1038,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -1056,7 +1056,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 90
               }
             ]
@@ -1072,7 +1072,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 154
               },
               {
@@ -1115,7 +1115,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 74
               },
               {
@@ -1158,7 +1158,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               },
               {
@@ -1205,7 +1205,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               },
               {
@@ -1252,7 +1252,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 122
               },
               {
@@ -1272,7 +1272,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1292,7 +1292,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               }
             ]
@@ -1304,7 +1304,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -1316,7 +1316,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -1433,7 +1433,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -1451,7 +1451,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 146
               },
               {
@@ -1471,7 +1471,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 114
               }
             ]
@@ -1483,7 +1483,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -1495,7 +1495,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]

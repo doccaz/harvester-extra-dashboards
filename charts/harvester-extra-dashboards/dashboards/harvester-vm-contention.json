@@ -2196,7 +2196,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -2215,7 +2215,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 122
               },
               {
@@ -2231,7 +2231,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -2243,7 +2243,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -2255,7 +2255,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]

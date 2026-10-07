@@ -1731,7 +1731,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -1749,7 +1749,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1769,7 +1769,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -1820,7 +1820,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 130
               },
               {
@@ -1840,7 +1840,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 130
               },
               {
@@ -1887,7 +1887,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -2192,7 +2192,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -2210,7 +2210,7 @@
                 "value": "short"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 130
               },
               {
@@ -2257,7 +2257,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 162
               },
               {
@@ -2277,7 +2277,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 106
               },
               {
@@ -2293,7 +2293,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -2305,7 +2305,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -2629,7 +2629,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -2648,7 +2648,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 72
               },
               {
@@ -2664,7 +2664,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -2676,7 +2676,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -2776,7 +2776,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -2794,7 +2794,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 122
               },
               {
@@ -2814,7 +2814,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 98
               },
               {
@@ -2830,7 +2830,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -2842,7 +2842,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -2944,7 +2944,7 @@
           "custom": {
             "align": "auto",
             "filterable": true,
-            "minWidth": 60,
+            "width": 90,
             "cellOptions": {
               "type": "auto"
             }
@@ -2963,7 +2963,7 @@
                 "value": "percent"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 82
               },
               {
@@ -2983,7 +2983,7 @@
                 "value": "bytes"
               },
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 72
               },
               {
@@ -2999,7 +2999,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
@@ -3011,7 +3011,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 150
               }
             ]
@@ -3023,7 +3023,7 @@
             },
             "properties": [
               {
-                "id": "custom.minWidth",
+                "id": "custom.width",
                 "value": 95
               }
             ]
