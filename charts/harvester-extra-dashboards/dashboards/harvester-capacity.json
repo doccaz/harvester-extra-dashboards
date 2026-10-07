@@ -1750,7 +1750,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 120
               },
               {
                 "id": "decimals",
@@ -1770,7 +1770,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 120
               },
               {
                 "id": "decimals",
@@ -1821,7 +1821,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 130
+                "value": 144
               },
               {
                 "id": "decimals",
@@ -1841,7 +1841,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 130
+                "value": 144
               },
               {
                 "id": "decimals",
@@ -2211,7 +2211,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 130
+                "value": 144
               },
               {
                 "id": "thresholds",
@@ -2258,7 +2258,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 162
+                "value": 176
               },
               {
                 "id": "decimals",
@@ -2278,7 +2278,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 120
               },
               {
                 "id": "decimals",
@@ -2294,7 +2294,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },
@@ -2649,7 +2649,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 72
+                "value": 80
               },
               {
                 "id": "decimals",
@@ -2665,7 +2665,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },
@@ -2795,7 +2795,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 122
+                "value": 136
               },
               {
                 "id": "decimals",
@@ -2815,7 +2815,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 98
+                "value": 112
               },
               {
                 "id": "decimals",
@@ -2831,7 +2831,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },
@@ -2964,7 +2964,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 82
+                "value": 96
               },
               {
                 "id": "decimals",
@@ -2984,7 +2984,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 72
+                "value": 80
               },
               {
                 "id": "decimals",
@@ -3000,7 +3000,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },
@@ -3024,7 +3024,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },

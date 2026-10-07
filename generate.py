@@ -223,7 +223,7 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
     for i, name in enumerate(list(labels.values()) + [c[1] for c in cols]):
         order[name] = i + 1
     for expr, header, unit, thr in cols:
-        props = [{"id": "unit", "value": unit}, {"id": "custom.width", "value": max(72, 8 * len(header) + 34)}]
+        props = [{"id": "unit", "value": unit}, {"id": "custom.width", "value": max(80, 8 * len(header) + 48)}]
         if unit != "short":                    # counts and rates: let Grafana choose (2, not 2.0)
             props.append({"id": "decimals", "value": 1 if unit == "percent" else 0})
         if thr and thr[0]["color"] == "green" and thr[0]["value"] is None:
@@ -235,7 +235,7 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
         overrides.append({"matcher": {"id": "byName", "options": header}, "properties": props})
     for lab in labels.values():                # label columns: names must stay readable
         overrides.append({"matcher": {"id": "byName", "options": lab},
-                          "properties": [{"id": "custom.width", "value": 150 if lab in ("VM", "PVC", "Node") else 95}]})
+                          "properties": [{"id": "custom.width", "value": 150 if lab in ("VM", "PVC", "Node") else 120}]})
     if vm_link and "VM" in labels.values():
         overrides.append({"matcher": {"id": "byName", "options": "VM"}, "properties": [{"id": "links", "value": [{
             "title": "Open VM detail",

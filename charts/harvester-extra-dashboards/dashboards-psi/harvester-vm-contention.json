@@ -2685,7 +2685,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 122
+                "value": 136
               },
               {
                 "id": "decimals",
@@ -2701,7 +2701,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },
@@ -2725,7 +2725,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           }

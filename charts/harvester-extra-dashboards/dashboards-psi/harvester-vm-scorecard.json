@@ -736,7 +736,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 74
+                "value": 88
               },
               {
                 "id": "thresholds",
@@ -783,7 +783,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 74
+                "value": 88
               }
             ]
           },
@@ -799,7 +799,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 72
+                "value": 80
               },
               {
                 "id": "decimals",
@@ -819,7 +819,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 114
+                "value": 128
               },
               {
                 "id": "decimals",
@@ -870,7 +870,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 122
+                "value": 136
               },
               {
                 "id": "decimals",
@@ -921,7 +921,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 122
+                "value": 136
               },
               {
                 "id": "decimals",
@@ -972,7 +972,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 146
+                "value": 160
               },
               {
                 "id": "decimals",
@@ -1023,7 +1023,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 138
+                "value": 152
               },
               {
                 "id": "thresholds",
@@ -1070,7 +1070,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 170
+                "value": 184
               },
               {
                 "id": "thresholds",
@@ -1117,7 +1117,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 72
+                "value": 80
               }
             ]
           },
@@ -1133,7 +1133,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 122
+                "value": 136
               },
               {
                 "id": "thresholds",
@@ -1180,7 +1180,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 146
+                "value": 160
               },
               {
                 "id": "thresholds",
@@ -1223,7 +1223,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 146
+                "value": 160
               },
               {
                 "id": "thresholds",
@@ -1266,7 +1266,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 122
+                "value": 136
               }
             ]
           },
@@ -1282,7 +1282,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 114
+                "value": 128
               },
               {
                 "id": "decimals",
@@ -1302,7 +1302,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 120
               },
               {
                 "id": "decimals",
@@ -1353,7 +1353,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 120
               },
               {
                 "id": "decimals",
@@ -1404,7 +1404,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 120
               },
               {
                 "id": "decimals",
@@ -1451,7 +1451,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 95
+                "value": 120
               }
             ]
           },
