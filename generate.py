@@ -36,7 +36,7 @@ F = '{namespace=~"$namespace",name=~"$vm",node=~"$node"}'
 # Series of the virt-launcher pod of the selected VMs (cAdvisor / kube-state-metrics).
 LP = 'namespace=~"$namespace",container="compute",pod=~"virt-launcher-$vm-[a-z0-9]{5}"'
 # Map a node-exporter series (instance) to the Kubernetes node name, filtered by $node.
-NJ = '* on (instance) group_left (nodename) node_uname_info{nodename=~"$node"}'
+NJ = '* on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~"$node"})'
 # vCPU count without relying on KubeVirt recording rules (one series per vCPU id and state).
 VCPUS = ('count by (namespace, name) (group by (namespace, name, id) '
          '(kubevirt_vmi_vcpu_seconds_total%s))')
@@ -194,6 +194,52 @@ class Dash:
         })
 
 
+
+def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=False):
+    """Table fed by instant queries that share the same label set. cols = [(expr, header, unit, thresholds)].
+    The queries are joined with the `merge` transformation, so every expression must aggregate by the same
+    labels. `labels` renames label columns, e.g. {"namespace": "Namespace", "name": "VM"}."""
+    labels = labels or {"namespace": "Namespace", "name": "VM"}
+    self._record(title, desc, [(c[0], c[1]) for c in cols])
+    single = len(cols) == 1
+    rename = dict(labels)
+    overrides = []
+    order = {"Time": 0}
+    for i, (expr, header, unit, thr) in enumerate(cols):
+        rename["Value" if single else "Value #%s" % chr(65 + i)] = header
+    for i, name in enumerate(list(labels.values()) + [c[1] for c in cols]):
+        order[name] = i + 1
+    for expr, header, unit, thr in cols:
+        props = [{"id": "unit", "value": unit}, {"id": "decimals", "value": 1 if unit in ("percent", "short") else 0}]
+        if thr:
+            props += [{"id": "thresholds", "value": {"mode": "absolute", "steps": thr}},
+                      {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}}]
+        overrides.append({"matcher": {"id": "byName", "options": header}, "properties": props})
+    if vm_link and "VM" in labels.values():
+        overrides.append({"matcher": {"id": "byName", "options": "VM"}, "properties": [{"id": "links", "value": [{
+            "title": "Open VM detail",
+            "url": "/d/harvester-vm-detail-v2?var-namespace=${__data.fields.Namespace}&var-vm=${__value.text}"
+                   "&${__url_time_range}"}]}]})
+    self.d["panels"].append({
+        "type": "table", "title": title, "description": desc, "datasource": DS,
+        "id": self._next_id(), "gridPos": self._place(w, h),
+        "targets": [{"refId": chr(65 + i), "datasource": DS, "expr": c[0], "format": "table",
+                     "instant": True, "range": False} for i, c in enumerate(cols)],
+        "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "organize", "options": {"excludeByName": {"Time": True}, "renameByName": rename,
+                                           "indexByName": order}}],
+        "fieldConfig": {"defaults": {"custom": {"align": "auto", "filterable": True,
+                                                "cellOptions": {"type": "auto"}}},
+                        "overrides": overrides},
+        "options": {"showHeader": True, "cellHeight": "sm", "footer": {"show": False},
+                    "sortBy": [{"displayName": sort[0], "desc": sort[1]}] if sort else []},
+    })
+
+
+Dash.table = _table
+
+
 def var_ds():
     return {"type": "datasource", "name": "datasource", "label": "Data source", "query": "prometheus",
             "current": {}, "hide": 0}
@@ -213,6 +259,19 @@ def var_topn():
     return {"type": "custom", "name": "topn", "label": "Top N", "query": "5,10,20,50", "hide": 0,
             "current": {"selected": True, "text": "10", "value": "10"},
             "options": [{"selected": n == "10", "text": n, "value": n} for n in ("5", "10", "20", "50")]}
+
+
+def var_window(default="3d"):
+    opts = ["1d", "3d", "5d"]
+    return {"type": "custom", "name": "window", "label": "Look-back window", "query": ",".join(opts), "hide": 0,
+            "current": {"selected": True, "text": default, "value": default},
+            "options": [{"selected": o == default, "text": o, "value": o} for o in opts]}
+
+
+def var_text(name, label, default):
+    return {"type": "textbox", "name": name, "label": label, "query": default, "hide": 0,
+            "current": {"selected": False, "text": default, "value": default},
+            "options": [{"selected": True, "text": default, "value": default}]}
 
 
 def var_hidden_node():
@@ -483,7 +542,7 @@ def detail():
          "or I/O ('some'), from cAdvisor.",
          [("100 * sum(rate(container_pressure_%s_waiting_seconds_total{%s}[5m]))" % (r, ps1), r)
           for r in ("cpu", "memory", "io")], unit="percent", thr=OK_WARN_BAD(10, 25), w=24)
-    nj1 = '* on (instance) group_left (nodename) node_uname_info{nodename="$node"}'
+    nj1 = '* on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename="$node"})'
     d.ts("Node pressure (PSI) [needs kernel PSI]", "CPU, memory and I/O pressure of "
          "the hosting node ('some'). Empty if that node's kernel boots without PSI (psi=1).",
          [("100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) %s" % nj1, "cpu"),
@@ -499,6 +558,294 @@ def detail():
     return d
 
 
+# --------------------------------------------------------------------------- right-sizing
+GIB = 1073741824
+F2 = '{namespace=~"$namespace",name=~"$vm"}'
+VMI = 'max by (namespace, name) (kubevirt_vmi_info%s)' % F2   # currently running VMIs
+WITNESS = 'kube_node_labels{label_node_role_harvesterhci_io_witness="true"}'
+STOPPED = 'kubevirt_vm_info{status_group="non_running",namespace=~"$namespace"}'
+STOP_TS = 'kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~"$namespace"}'
+
+
+def running(e):
+    return "(%s) and on (namespace, name) %s" % (e, VMI)
+
+
+def avg_w(e):
+    return "avg_over_time((%s)[$window:5m])" % e
+
+
+def p95_w(e):
+    return "quantile_over_time(0.95, (%s)[$window:5m])" % e
+
+
+def max_w(e):
+    return "max_over_time((%s)[$window:5m])" % e
+
+
+VCPU = ("count by (namespace, name) (group by (namespace, name, id) "
+        "(kubevirt_vmi_vcpu_seconds_total%s))" % F2)
+CORES = "sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total%s[5m]))" % F2
+MEM_USED = ("max by (namespace, name) (kubevirt_vmi_memory_available_bytes%s) "
+            "- max by (namespace, name) (kubevirt_vmi_memory_usable_bytes%s)" % (F2, F2))
+MEM_ALLOC = "max by (namespace, name) (kubevirt_vmi_memory_domain_bytes%s)" % F2
+NET_BPS = ("8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total%s[5m])) "
+           "+ sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total%s[5m])))" % (F2, F2))
+IOPS = ("sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total%s[5m])) "
+        "+ sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total%s[5m]))" % (F2, F2))
+
+
+def pct_of_vcpus(core_expr):
+    return "100 * (%s) / (%s)" % (core_expr, VCPU)
+
+
+CPU_P95_PCT = running(pct_of_vcpus(p95_w(CORES)))
+CPU_AVG_PCT = running(pct_of_vcpus(avg_w(CORES)))
+CPU_MAX_PCT = running(pct_of_vcpus(max_w(CORES)))
+SUGGEST_VCPU = running("clamp_min(ceil((%s) / ($target / 100)), 1)" % p95_w(CORES))
+RECLAIM_VCPU = running("clamp_min((%s) - (%s), 0)" % (VCPU, SUGGEST_VCPU))
+MEM_P95 = running(p95_w(MEM_USED))
+MEM_P95_PCT = running("100 * (%s) / (%s)" % (p95_w(MEM_USED), MEM_ALLOC))
+SUGGEST_MEM = running("clamp_min(ceil((%s) / ($target / 100) / %d), 1) * %d" % (p95_w(MEM_USED), GIB, GIB))
+RECLAIM_MEM = running("clamp_min((%s) - (%s), 0)" % (MEM_ALLOC, SUGGEST_MEM))
+IDLE = running("((%s) < $idle_cpu) and on (namespace, name) ((%s) / 1000 < $idle_net) "
+               "and on (namespace, name) ((%s) < $idle_iops)"
+               % (pct_of_vcpus(p95_w(CORES)), avg_w(NET_BPS), avg_w(IOPS)))
+UNDER = running("((%s) > $under_cpu) or on (namespace, name) ((100 * (%s) / (%s)) > $under_mem)"
+                % (pct_of_vcpus(p95_w(CORES)), p95_w(MEM_USED), MEM_ALLOC))
+
+
+def of(e, set_expr):
+    """Restrict e to the VMs present in set_expr."""
+    return "(%s) and on (namespace, name) (%s)" % (e, set_expr)
+
+
+def rightsizing():
+    d = Dash(
+        "harvester-rightsizing-v1", "Harvester Right-Sizing",
+        "Idle, over- and under-provisioned VMs, with a suggested size and the vCPU/memory that could be reclaimed. "
+        "Based on p95 usage over the look-back window; Prometheus in the Harvester add-on keeps only 5 days.",
+        ["harvester", "kubevirt", "rightsizing"],
+        [var_ds(),
+         var_query("namespace", "Namespace", "label_values(kubevirt_vmi_info, namespace)", all_value=".*"),
+         var_query("vm", "VM", 'label_values(kubevirt_vmi_info{namespace=~"$namespace"}, name)', all_value=".+"),
+         var_window(),
+         var_text("target", "Target utilisation % (sizing)", "70"),
+         var_text("idle_cpu", "Idle: CPU p95 below %", "5"),
+         var_text("idle_net", "Idle: network avg below kbit/s", "50"),
+         var_text("idle_iops", "Idle: disk IOPS avg below", "5"),
+         var_text("under_cpu", "Under-sized: CPU p95 above %", "85"),
+         var_text("under_mem", "Under-sized: memory p95 above %", "90")],
+        links=[{"title": "Capacity & Reclaim", "type": "link", "url": "/d/harvester-capacity-v1",
+                "icon": "external link", "targetBlank": False},
+               {"title": "VM Contention", "type": "link", "url": "/d/harvester-vm-contention-v1",
+                "icon": "external link", "targetBlank": False}])
+
+    d.row("Summary (look-back window and thresholds are the variables above)")
+    d.stat("Running VMs", "VMs with a running instance in the selection.", "count(%s) or vector(0)" % VMI)
+    d.stat("Idle VM candidates", "Running VMs whose CPU p95, average network and average disk IOPS are all "
+           "below the idle thresholds for the whole window. Candidates to power off or remove, to confirm with "
+           "the owner: a VM that works only occasionally (monthly jobs) looks idle in a short window.",
+           "count(%s) or vector(0)" % IDLE, thr=OK_WARN_BAD(1, 3))
+    d.stat("VMs with reclaimable resources", "Running VMs whose p95 usage would fit in fewer vCPUs or less "
+           "memory at the target utilisation.",
+           "count((%s) > 0 or on (namespace, name) (%s) > 0) or vector(0)" % (RECLAIM_VCPU, RECLAIM_MEM),
+           thr=OK_WARN_BAD(1, 5))
+    d.stat("vCPUs reclaimable", "Sum over VMs of (provisioned vCPUs - vCPUs needed for p95 CPU at the target "
+           "utilisation).", "sum(%s) or vector(0)" % RECLAIM_VCPU)
+    d.stat("Memory reclaimable", "Sum over VMs of (allocated memory - memory needed for p95 guest usage at the "
+           "target utilisation). Only VMs running qemu-guest-agent report guest memory.",
+           "sum(%s) or vector(0)" % RECLAIM_MEM, unit="bytes")
+    d.stat("Under-sized VMs", "VMs above the under-sized CPU or memory p95 thresholds.",
+           "count(%s) or vector(0)" % UNDER, thr=OK_WARN_BAD(1, 3))
+
+    d.row("Provisioned vs actually used (fleet, selected VMs)")
+    d.ts("vCPUs provisioned vs cores used", "Provisioned vCPUs of running VMs against the CPU cores they use.",
+         [("sum(%s)" % running(VCPU), "vCPUs provisioned"),
+          ("sum(%s)" % running(CORES), "cores used")], unit="short", w=12, fill=0)
+    d.ts("Memory allocated vs guest memory used", "Memory allocated to running VMs against guest memory in use "
+         "(available - MemAvailable, so reclaimable page cache is not counted as used; guest agent needed).",
+         [("sum(%s)" % MEM_ALLOC.replace("max by (namespace, name)", "max by (namespace, name)"), "allocated"),
+          ("sum(%s)" % running(MEM_USED), "used by guests")], unit="bytes", w=12, fill=0)
+
+    d.row("Idle VM candidates")
+    d.table("Idle VM candidates", "All three tests passed over the window: CPU p95 < idle threshold, average "
+            "network < idle kbit/s, average disk IOPS < idle IOPS.",
+            [(of(VCPU, IDLE), "vCPUs", "short", None),
+             (of(MEM_ALLOC, IDLE), "Memory", "bytes", None),
+             (of(pct_of_vcpus(p95_w(CORES)), IDLE), "CPU p95 %", "percent", None),
+             (of(pct_of_vcpus(avg_w(CORES)), IDLE), "CPU avg %", "percent", None),
+             (of("(%s) / 1000" % avg_w(NET_BPS), IDLE), "Net avg kbit/s", "short", None),
+             (of(avg_w(IOPS), IDLE), "IOPS avg", "short", None)],
+            sort=("vCPUs", True), vm_link=True, h=8)
+
+    d.row("Right-sizing: provisioned vs p95 usage")
+    d.table("Right-sizing recommendations (running VMs)", "Suggested = p95 usage / target utilisation, rounded up "
+            "(vCPUs to whole cores, memory to whole GiB). A suggestion, not a promise: the window is short, and "
+            "memory columns are empty for VMs without qemu-guest-agent. CPU peak % shows how far spikes went.",
+            [(running(VCPU), "vCPUs", "short", None),
+             (CPU_AVG_PCT, "CPU avg %", "percent", None),
+             (CPU_P95_PCT, "CPU p95 %", "percent", steps(("red", None), ("orange", 10), ("green", 30))),
+             (CPU_MAX_PCT, "CPU peak %", "percent", None),
+             (SUGGEST_VCPU, "Suggested vCPUs", "short", None),
+             (RECLAIM_VCPU, "vCPUs reclaimable", "short", steps(("green", None), ("orange", 1), ("red", 4))),
+             (running(MEM_ALLOC), "Memory", "bytes", None),
+             (MEM_P95, "Memory p95 used", "bytes", None),
+             (SUGGEST_MEM, "Suggested memory", "bytes", None),
+             (RECLAIM_MEM, "Memory reclaimable", "bytes", None)],
+            sort=("vCPUs reclaimable", True), vm_link=True, h=12)
+
+    d.row("Under-provisioned VMs")
+    d.table("Under-sized VM candidates", "CPU p95 above the under-sized CPU threshold, or guest memory p95 above "
+            "the memory threshold, over the window. Check CPU Ready on the contention dashboard before adding vCPUs.",
+            [(of(running(VCPU), UNDER), "vCPUs", "short", None),
+             (of(CPU_P95_PCT, UNDER), "CPU p95 %", "percent", steps(("green", None), ("orange", 70), ("red", 85))),
+             (of(CPU_MAX_PCT, UNDER), "CPU peak %", "percent", None),
+             (of(running(MEM_ALLOC), UNDER), "Memory", "bytes", None),
+             (of(MEM_P95_PCT, UNDER), "Memory p95 %", "percent", steps(("green", None), ("orange", 80), ("red", 90)))],
+            sort=("CPU p95 %", True), vm_link=True, h=7)
+    return d
+
+
+# --------------------------------------------------------------------------- capacity and reclaim
+def hosts(e):
+    """Restrict a per-node series to the nodes that can run VMs (everything but the witness)."""
+    return "(%s) unless on (node) %s" % (e, WITNESS)
+
+
+ALLOC_CPU = 'kube_node_status_allocatable{resource="cpu"}'
+ALLOC_MEM = 'kube_node_status_allocatable{resource="memory"}'
+REQ_MEM = 'sum by (node) (kube_pod_container_resource_requests{resource="memory"})'
+VCPU_BY_NODE = ("sum by (node) (count by (namespace, name, node) (group by (namespace, name, node, id) "
+                "(kubevirt_vmi_vcpu_seconds_total)))")
+MEM_BY_NODE = "sum by (node) (max by (namespace, name, node) (kubevirt_vmi_memory_domain_bytes))"
+HOST_JOIN = "* on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info)"
+HOST_CPU = "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) %s" % HOST_JOIN
+HOST_MEM = ("100 * (1 - max by (instance) (node_memory_MemAvailable_bytes) "
+            "/ max by (instance) (node_memory_MemTotal_bytes)) %s" % HOST_JOIN)
+VOL_TO_VM = ('sum by (namespace, name) (label_replace(label_replace(%s, "namespace", "$1", "pvc_namespace", "(.*)"), '
+             '"persistentvolumeclaim", "$1", "pvc", "(.*)") * on (namespace, persistentvolumeclaim) group_left (name) '
+             '(max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes) * 0 + 1))')
+DAYS_STOPPED = "(time() - %s) / 86400 and on (namespace, name) (%s > 0) and on (namespace, name) %s" % (
+    STOP_TS, STOP_TS, STOPPED)
+STOPPED_DISK = "sum by (namespace, name) (kubevirt_vm_disk_allocated_size_bytes) and on (namespace, name) %s" % STOPPED
+STOPPED_ACTUAL = "(%s) and on (namespace, name) %s" % (VOL_TO_VM % "longhorn_volume_actual_size_bytes", STOPPED)
+ORPHAN_PVC = ('kube_persistentvolumeclaim_info{storageclass=~"harvester-.*",namespace=~"$namespace",'
+              'namespace!~"cattle-.*|harvester-.*|kube-.*|longhorn-system"} '
+              'unless on (namespace, persistentvolumeclaim) kubevirt_vm_disk_allocated_size_bytes '
+              'unless on (namespace, persistentvolumeclaim) kube_pod_spec_volumes_persistentvolumeclaims_info')
+
+
+def capacity():
+    d = Dash(
+        "harvester-capacity-v1", "Harvester Capacity & Reclaim",
+        "Overcommit and N-1 headroom per host, host utilisation, stopped VMs and the storage they hold, "
+        "Longhorn thin-provisioning efficiency and volumes/PVCs nobody uses. Harvester 1.8.x.",
+        ["harvester", "kubevirt", "capacity"],
+        [var_ds(),
+         var_query("namespace", "Namespace", "label_values(kubevirt_vm_info, namespace)", all_value=".*"),
+         var_window()],
+        links=[{"title": "Right-Sizing", "type": "link", "url": "/d/harvester-rightsizing-v1",
+                "icon": "external link", "targetBlank": False},
+               {"title": "VM Contention", "type": "link", "url": "/d/harvester-vm-contention-v1",
+                "icon": "external link", "targetBlank": False}])
+
+    d.row("Cluster capacity (hosts = every node except the witness)")
+    d.stat("vCPU : physical core", "vCPUs provisioned to running VMs divided by the allocatable CPU cores of the "
+           "hosts. Harvester overcommits CPU by default (the add-on's overcommit setting), so 3:1 is normal.",
+           "sum(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))) "
+           "/ sum(%s)" % hosts(ALLOC_CPU), thr=steps(("green", None), ("orange", 4), ("red", 8)))
+    d.stat("Memory allocated to VMs", "Memory allocated to running VMs / allocatable memory of the hosts.",
+           "100 * sum(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes)) / sum(%s)" % hosts(ALLOC_MEM),
+           unit="percent", thr=OK_WARN_BAD(70, 90))
+    d.stat("Memory requested by pods", "Sum of pod memory requests on the hosts / allocatable memory: what the "
+           "scheduler sees.", "100 * sum(%s) / sum(%s)" % (hosts(REQ_MEM), hosts(ALLOC_MEM)), unit="percent",
+           thr=OK_WARN_BAD(70, 90))
+    d.stat("Requests vs capacity after losing the biggest host", "Memory requests / (allocatable - the largest "
+           "host). Above 100% the cluster cannot reschedule everything if that host fails.",
+           "100 * sum(%s) / (sum(%s) - max(%s))" % (hosts(REQ_MEM), hosts(ALLOC_MEM), hosts(ALLOC_MEM)),
+           unit="percent", thr=OK_WARN_BAD(80, 100))
+    d.stat("Stopped VMs", "VMs that are not running.", "count(%s) or vector(0)" % STOPPED)
+    d.stat("Longhorn scheduled vs capacity", "Storage scheduled (replicas included) / usable disk capacity of "
+           "the Longhorn nodes. Longhorn refuses new volumes beyond its over-provisioning limit.",
+           "100 * sum(longhorn_node_storage_scheduled_bytes) / sum(longhorn_node_storage_capacity_bytes "
+           "- longhorn_node_storage_reservation_bytes)", unit="percent", thr=OK_WARN_BAD(80, 100))
+
+    d.row("Overcommit per host")
+    d.ts("vCPUs provisioned vs allocatable cores", "Per host: vCPUs of the running VMs on it against the node's "
+         "allocatable CPU.",
+         [(VCPU_BY_NODE, "{{node}} provisioned vCPUs"), (hosts(ALLOC_CPU), "{{node}} allocatable cores")],
+         unit="short", w=12, fill=0)
+    d.ts("Memory allocated vs allocatable", "Per host: memory of the running VMs on it against the node's "
+         "allocatable memory.",
+         [(MEM_BY_NODE, "{{node}} allocated to VMs"), (hosts(ALLOC_MEM), "{{node}} allocatable")],
+         unit="bytes", w=12, fill=0)
+
+    d.row("Host utilisation")
+    d.ts("Host CPU utilisation", "% of CPU time not idle, per node.", [(HOST_CPU, "{{nodename}}")],
+         unit="percent", maxv=100, thr=OK_WARN_BAD(70, 90), w=12)
+    d.ts("Host memory used", "100 - MemAvailable %, per node.", [(HOST_MEM, "{{nodename}}")],
+         unit="percent", maxv=100, thr=OK_WARN_BAD(80, 92), w=12)
+    d.table("Host utilisation over the look-back window", "Average and p95 of host CPU and memory use. A host "
+            "that stays low at p95 has room to take VMs; one that is high at p95 has none.",
+            [("avg_over_time((%s)[$window:5m])" % HOST_CPU, "CPU avg %", "percent", None),
+             ("quantile_over_time(0.95, (%s)[$window:5m])" % HOST_CPU, "CPU p95 %", "percent",
+              steps(("green", None), ("orange", 70), ("red", 90))),
+             ("avg_over_time((%s)[$window:5m])" % HOST_MEM, "Memory avg %", "percent", None),
+             ("quantile_over_time(0.95, (%s)[$window:5m])" % HOST_MEM, "Memory p95 %", "percent",
+              steps(("green", None), ("orange", 80), ("red", 92)))],
+            labels={"nodename": "Node"}, sort=("CPU p95 %", True), h=6)
+
+    d.row("Stopped VMs and the storage they hold")
+    d.stat("Disk allocated to stopped VMs", "Provisioned size of the disks of VMs that are not running.",
+           "sum(%s) or vector(0)" % STOPPED_DISK, unit="bytes")
+    d.stat("Disk actually used by stopped VMs", "Longhorn actual (thin) size of those disks, one replica.",
+           "sum(%s) or vector(0)" % STOPPED_ACTUAL, unit="bytes")
+    d.stat("VMs stopped over 30 days", "Stopped VMs whose last transition is more than 30 days ago.",
+           "count((%s) > 30) or vector(0)" % DAYS_STOPPED, thr=OK_WARN_BAD(1, 5))
+    d.table("Stopped VMs", "Days since the VM stopped (blank when Harvester has no timestamp), disk size "
+            "provisioned and actually used. Candidates to delete, archive or export.",
+            [(DAYS_STOPPED, "Days stopped", "short", steps(("green", None), ("orange", 30), ("red", 90))),
+             (STOPPED_DISK, "Disk provisioned", "bytes", None),
+             (STOPPED_ACTUAL, "Disk used", "bytes", None)],
+            sort=("Disk used", True), vm_link=True, w=14, h=9)
+
+    d.row("Storage efficiency (Longhorn)")
+    d.stat("Thin-provisioning: actual / provisioned", "Longhorn volumes' actual size over their capacity.",
+           "100 * sum(longhorn_volume_actual_size_bytes) / sum(longhorn_volume_capacity_bytes)", unit="percent")
+    d.stat("Volumes detached", "Longhorn volumes not attached to a workload right now (includes the disks of "
+           "stopped VMs).", 'count(longhorn_volume_state{state="detached"} == 1) or vector(0)')
+    d.ts("Longhorn node storage", "Per node: disk usage, storage scheduled (replicas included) and capacity.",
+         [("longhorn_node_storage_usage_bytes", "{{node}} used"),
+          ("longhorn_node_storage_scheduled_bytes", "{{node}} scheduled"),
+          ("longhorn_node_storage_capacity_bytes", "{{node}} capacity")], unit="bytes", w=14, fill=0)
+    d.table("PVCs used by neither a VM nor a pod (candidates)", "PVCs on Harvester storage classes, outside "
+            "system namespaces, that no VM disk and no pod references. Review before deleting: a PVC can be "
+            "bound for a purpose this dashboard cannot see.",
+            [("kube_persistentvolumeclaim_resource_requests_storage_bytes and on (namespace, persistentvolumeclaim)"
+              " (%s)" % ORPHAN_PVC, "Size", "bytes", None)],
+            labels={"namespace": "Namespace", "persistentvolumeclaim": "PVC"}, sort=("Size", True), w=12, h=7)
+    d.table("Largest detached Longhorn volumes", "Detached volumes by actual size (disks of stopped VMs "
+            "included): where the space sits while nothing uses it.",
+            [("topk(15, longhorn_volume_actual_size_bytes and on (volume) (longhorn_volume_state{state=\"detached\"}"
+              " == 1))", "Actual size", "bytes", None),
+             ("longhorn_volume_capacity_bytes and on (volume) topk(15, longhorn_volume_actual_size_bytes "
+              "and on (volume) (longhorn_volume_state{state=\"detached\"} == 1))", "Capacity", "bytes", None)],
+            labels={"pvc_namespace": "Namespace", "pvc": "PVC"}, sort=("Actual size", True), w=12, h=7)
+    fs = '{namespace=~"$namespace"}'
+    fs_used = "max by (namespace, name, mount_point) (kubevirt_vmi_filesystem_used_bytes%s)" % fs
+    fs_size = "max by (namespace, name, mount_point) (kubevirt_vmi_filesystem_capacity_bytes%s)" % fs
+    fs_set = "((100 * %s / %s) < 20) and on (namespace, name, mount_point) (%s > 10737418240)" % (fs_used, fs_size, fs_size)
+    d.table("Large, mostly empty guest filesystems", "Guest filesystems over 10 GiB that are under 20% used "
+            "(guest agent): disks provisioned far larger than needed.",
+            [("(100 * %s / %s) and on (namespace, name, mount_point) (%s)" % (fs_used, fs_size, fs_set),
+              "Used %", "percent", None),
+             ("(%s) and on (namespace, name, mount_point) (%s)" % (fs_size, fs_set), "Size", "bytes", None)],
+            labels={"namespace": "Namespace", "name": "VM", "mount_point": "Mount"}, sort=("Used %", False),
+            vm_link=True, h=6)
+    return d
+
+
 def main():
     global WITH_PSI
     manifest = []
@@ -506,7 +853,8 @@ def main():
         WITH_PSI = psi
         os.makedirs(OUT[psi], exist_ok=True)
         panels = 0
-        for name, dash in (("harvester-vm-contention", contention()), ("harvester-vm-detail-v2", detail())):
+        for name, dash in (("harvester-vm-contention", contention()), ("harvester-vm-detail-v2", detail()),
+                           ("harvester-rightsizing", rightsizing()), ("harvester-capacity", capacity())):
             with open(os.path.join(OUT[psi], name + ".json"), "w") as f:
                 json.dump(dash.d, f, indent=2)
                 f.write("\n")

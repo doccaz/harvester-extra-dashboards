@@ -14,7 +14,8 @@ import sys
 import promql_parser
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SAMPLE = {"namespace": "default", "vm": "vm1", "node": "node1", "topn": "10"}
+SAMPLE = {"namespace": "default", "vm": "vm1", "node": "node1", "topn": "10", "window": "3d", "target": "70",
+          "idle_cpu": "5", "idle_net": "50", "idle_iops": "5", "under_cpu": "85", "under_mem": "90"}
 
 errors = []
 exprs = 0

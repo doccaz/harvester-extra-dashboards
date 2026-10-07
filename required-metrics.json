@@ -485,5 +485,321 @@
       "node_vmstat_pgmajfault"
     ],
     "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Running VMs",
+    "metrics": [
+      "kubevirt_vmi_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Idle VM candidates",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_network_receive_bytes_total",
+      "kubevirt_vmi_network_transmit_bytes_total",
+      "kubevirt_vmi_storage_iops_read_total",
+      "kubevirt_vmi_storage_iops_write_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "VMs with reclaimable resources",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "vCPUs reclaimable",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Memory reclaimable",
+    "metrics": [
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Under-sized VMs",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "vCPUs provisioned vs cores used",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Memory allocated vs guest memory used",
+    "metrics": [
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Idle VM candidates",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_network_receive_bytes_total",
+      "kubevirt_vmi_network_transmit_bytes_total",
+      "kubevirt_vmi_storage_iops_read_total",
+      "kubevirt_vmi_storage_iops_write_total",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Right-sizing recommendations (running VMs)",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-rightsizing-v1",
+    "panel": "Under-sized VM candidates",
+    "metrics": [
+      "kubevirt_vmi_cpu_usage_seconds_total",
+      "kubevirt_vmi_info",
+      "kubevirt_vmi_memory_available_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_usable_bytes",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "vCPU : physical core",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Memory allocated to VMs",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kubevirt_vmi_memory_domain_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Memory requested by pods",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kube_pod_container_resource_requests"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Requests vs capacity after losing the biggest host",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kube_pod_container_resource_requests"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Stopped VMs",
+    "metrics": [
+      "kubevirt_vm_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Longhorn scheduled vs capacity",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "vCPUs provisioned vs allocatable cores",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kubevirt_vmi_vcpu_seconds_total"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Memory allocated vs allocatable",
+    "metrics": [
+      "kube_node_labels",
+      "kube_node_status_allocatable",
+      "kubevirt_vmi_memory_domain_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Host CPU utilisation",
+    "metrics": [
+      "node_cpu_seconds_total",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Host memory used",
+    "metrics": [
+      "node_memory_MemAvailable_bytes",
+      "node_memory_MemTotal_bytes",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Host utilisation over the look-back window",
+    "metrics": [
+      "node_cpu_seconds_total",
+      "node_memory_MemAvailable_bytes",
+      "node_memory_MemTotal_bytes",
+      "node_uname_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Disk allocated to stopped VMs",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes",
+      "kubevirt_vm_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Disk actually used by stopped VMs",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes",
+      "kubevirt_vm_info"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "VMs stopped over 30 days",
+    "metrics": [
+      "kubevirt_vm_info",
+      "kubevirt_vm_non_running_status_last_transition_timestamp_seconds"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Stopped VMs",
+    "metrics": [
+      "kubevirt_vm_disk_allocated_size_bytes",
+      "kubevirt_vm_info",
+      "kubevirt_vm_non_running_status_last_transition_timestamp_seconds"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Thin-provisioning: actual / provisioned",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Volumes detached",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Longhorn node storage",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "PVCs used by neither a VM nor a pod (candidates)",
+    "metrics": [
+      "kube_persistentvolumeclaim_info",
+      "kube_persistentvolumeclaim_resource_requests_storage_bytes",
+      "kube_pod_spec_volumes_persistentvolumeclaims_info",
+      "kubevirt_vm_disk_allocated_size_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Largest detached Longhorn volumes",
+    "metrics": [],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-capacity-v1",
+    "panel": "Large, mostly empty guest filesystems",
+    "metrics": [
+      "kubevirt_vmi_filesystem_capacity_bytes",
+      "kubevirt_vmi_filesystem_used_bytes"
+    ],
+    "psi": false
   }
 ]

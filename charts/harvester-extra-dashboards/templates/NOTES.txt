@@ -9,6 +9,12 @@ look for the "[SV+]" dashboards, or filter by the tag "sv-plus":
 {{- if .Values.dashboards.detail.enabled }}
   - [SV+] Harvester VM Info Detail v2
 {{- end }}
+{{- if .Values.dashboards.rightsizing.enabled }}
+  - [SV+] Harvester Right-Sizing
+{{- end }}
+{{- if .Values.dashboards.capacity.enabled }}
+  - [SV+] Harvester Capacity & Reclaim
+{{- end }}
 
   kubectl -n {{ .Values.dashboardsNamespace }} get configmap -l app.kubernetes.io/instance={{ .Release.Name }}
 {{ if .Values.psi.enabled }}

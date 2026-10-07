@@ -37,10 +37,13 @@ def check(label, args, variant, names, ns="cattle-dashboards", label_key="grafan
     return docs
 
 
-BOTH = ["rel-vm-contention", "rel-vm-detail-v2"]
+BOTH = ["rel-vm-contention", "rel-vm-detail-v2", "rel-rightsizing", "rel-capacity"]
 check("default (no PSI)", [], "dashboards", BOTH)
 check("psi.enabled", ["--set", "psi.enabled=true"], "dashboards-psi", BOTH)
-check("only contention", ["--set", "dashboards.detail.enabled=false"], "dashboards", ["rel-vm-contention"])
+check("only contention", ["--set", "dashboards.detail.enabled=false", "--set", "dashboards.rightsizing.enabled=false",
+      "--set", "dashboards.capacity.enabled=false"], "dashboards", ["rel-vm-contention"])
+check("only the new dashboards", ["--set", "dashboards.contention.enabled=false", "--set", "dashboards.detail.enabled=false"],
+      "dashboards", ["rel-rightsizing", "rel-capacity"])
 docs = check("custom namespace/label/annotation",
              ["--set", "dashboardsNamespace=mon", "--set", "sidecar.label=my_label", "--set", "labels.team=virt",
               "--set-string", "annotations.k8s-sidecar-target-directory=/tmp/dashboards/Harvester"],
@@ -49,8 +52,9 @@ meta = docs[0]["metadata"]
 assert meta["labels"]["team"] == "virt" and "grafana_dashboard" not in meta["labels"]
 assert meta["annotations"]["k8s-sidecar-target-directory"] == "/tmp/dashboards/Harvester"
 
-out = subprocess.run(["helm", "template", "rel", CHART, "--set", "dashboards.contention.enabled=false",
-                      "--set", "dashboards.detail.enabled=false"], capture_output=True, text=True)
+out = subprocess.run(["helm", "template", "rel", CHART] + sum(
+    [["--set", "dashboards.%s.enabled=false" % k] for k in ("contention", "detail", "rightsizing", "capacity")], []),
+    capture_output=True, text=True)
 assert out.returncode == 0 and "kind: ConfigMap" not in out.stdout
 print("ok  %-30s no ConfigMaps rendered" % "all dashboards disabled")
 

@@ -5,7 +5,9 @@ passed through `tpl`: panel legends such as {{name}} must reach Grafana untouche
 {{- $dir := include "harvester-extra-dashboards.dir" . }}
 {{- $items := list
       (dict "name" "vm-contention" "file" "harvester-vm-contention.json" "enabled" .Values.dashboards.contention.enabled)
-      (dict "name" "vm-detail-v2" "file" "harvester-vm-detail-v2.json" "enabled" .Values.dashboards.detail.enabled) }}
+      (dict "name" "vm-detail-v2" "file" "harvester-vm-detail-v2.json" "enabled" .Values.dashboards.detail.enabled)
+      (dict "name" "rightsizing" "file" "harvester-rightsizing.json" "enabled" .Values.dashboards.rightsizing.enabled)
+      (dict "name" "capacity" "file" "harvester-capacity.json" "enabled" .Values.dashboards.capacity.enabled) }}
 {{- range $item := $items }}
 {{- if $item.enabled }}
 ---

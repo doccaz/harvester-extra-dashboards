@@ -1837,7 +1837,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "expr": "100 * rate(node_pressure_cpu_waiting_seconds_total[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=\"$node\"})",
           "legendFormat": "cpu",
           "range": true,
           "instant": false
@@ -1848,7 +1848,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "100 * rate(node_pressure_memory_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "expr": "100 * rate(node_pressure_memory_waiting_seconds_total[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=\"$node\"})",
           "legendFormat": "memory",
           "range": true,
           "instant": false
@@ -1859,7 +1859,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "100 * rate(node_pressure_io_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "expr": "100 * rate(node_pressure_io_waiting_seconds_total[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=\"$node\"})",
           "legendFormat": "io",
           "range": true,
           "instant": false
@@ -1938,7 +1938,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "expr": "(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=\"$node\"})",
           "legendFormat": "available",
           "range": true,
           "instant": false
@@ -2018,7 +2018,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(rate(node_vmstat_pgmajfault[5m])) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "expr": "(rate(node_vmstat_pgmajfault[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=\"$node\"})",
           "legendFormat": "major faults/s",
           "range": true,
           "instant": false
@@ -2029,7 +2029,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(increase(node_vmstat_oom_kill[5m])) * on (instance) group_left (nodename) node_uname_info{nodename=\"$node\"}",
+          "expr": "(increase(node_vmstat_oom_kill[5m])) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=\"$node\"})",
           "legendFormat": "OOM kills / 5m",
           "range": true,
           "instant": false

@@ -1,6 +1,6 @@
 # harvester-extra-dashboards
 
-Extra Grafana dashboards for Harvester (SUSE Virtualization): VM contention dashboards.
+Extra Grafana dashboards for Harvester (SUSE Virtualization): VM contention, right-sizing and capacity/reclaim.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that
 close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, launcher OOM
@@ -11,6 +11,8 @@ risk, storage latency (pressure/PSI panels are opt-in, see below). Target: **Har
 |---|---|
 | **[SV+] Harvester VM Contention** (`harvester-vm-contention-v1`) | Which VMs/nodes are being starved right now: CPU Ready %, guest memory in use, swap/major faults, launcher OOM risk, read/write latency, network drops (plus per-VM and host PSI panels in the `psi` variant). Panels link to the detail dashboard. |
 | **[SV+] Harvester VM Info Detail v2** (`harvester-vm-detail-v2`) | One VM end to end, plus the node it runs on. Adds what the stock `Harvester VM Info Detail` lacks. Own uid: the official `harvester-vm-*` dashboards are untouched. Both titles carry the `[SV+]` prefix and the `sv-plus` tag (`TITLE_PREFIX`/`TAG` in `generate.py`) to stand out from the stock ones. |
+| **[SV+] Harvester Right-Sizing** (`harvester-rightsizing-v1`) | Which running VMs are idle, over- or under-provisioned. Tunable thresholds and look-back window (variables). Per-VM p95 CPU/memory against what was provisioned, a **suggested** vCPU/memory size at a target utilisation, and the total vCPU/memory that could be reclaimed. |
+| **[SV+] Harvester Capacity & Reclaim** (`harvester-capacity-v1`) | Cluster level: vCPU:core ratio, memory allocated/requested, **N-1 headroom**, per-host overcommit and utilisation, stopped VMs and the disk they hold, Longhorn thin-provisioning and node storage, detached volumes, PVCs that no VM or pod uses, large mostly-empty guest filesystems. |
 
 ## Install
 
@@ -32,12 +34,12 @@ Grafana loads them within about a minute: look for the `[SV+]` dashboards, or fi
 | Value | Default | |
 |---|---|---|
 | `psi.enabled` | `false` | Install the variant with the pressure (PSI) panels; needs kernel PSI, see below |
-| `dashboards.contention.enabled` / `dashboards.detail.enabled` | `true` | Install each dashboard |
+| `dashboards.contention.enabled`, `.detail.enabled`, `.rightsizing.enabled`, `.capacity.enabled` | `true` | Install each dashboard |
 | `dashboardsNamespace` | `cattle-dashboards` | Namespace Grafana's sidecar watches |
 | `sidecar.label` / `sidecar.labelValue` | `grafana_dashboard` / `"1"` | Sidecar selector |
 | `labels`, `annotations` | `{}` | Extra metadata on the ConfigMaps (e.g. a sidecar folder annotation) |
 
-ConfigMaps are named `<release>-vm-contention` and `<release>-vm-detail-v2`. Do not mix the chart with
+ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<release>-rightsizing` and `<release>-capacity`. Do not mix the chart with
 `apply.sh` on the same cluster: both define the same dashboard uids (`./apply.sh --delete` first).
 
 ## Files
@@ -57,6 +59,33 @@ python3 verify-metrics.py http://localhost:9090
 
 CI (`.github/workflows/ci.yaml`) runs the same checks and fails if the committed JSON differs from what
 `generate.py` produces.
+
+## Right-sizing and capacity: how to read them
+
+Both dashboards are for **decisions**, not alerts: they list candidates and a suggested size, a person confirms.
+
+- **Look-back window** (`1d`/`3d`/`5d`, default `3d`) drives every p95/average. The Harvester add-on keeps
+  only **5 days** of Prometheus data (`retention: 5d`, 50 GiB), so a monthly batch job or a quarter-end peak is
+  invisible and a VM can look idle or oversized when it is not. Treat 5 days as a first filter. For 14-30 days,
+  raise `retention`/`retentionSize` and the PVC of the add-on's Prometheus (lab figures: 316,841 series, 6.4 GB of
+  blocks for 5 days, about 1.3 GB/day; 14 days is about 18 GB, 30 days about 39 GB, which does not fit the default
+  50 GiB PVC with headroom).
+- **Suggested size** = p95 usage / target utilisation (default 70%), rounded up to whole vCPUs and whole GiB.
+  "Reclaimable" is provisioned minus suggested, never negative. The **peak** column shows the spikes p95 hides.
+- **Idle candidate** = CPU p95, average network and average disk IOPS all below their thresholds for the whole
+  window. **Under-sized** = CPU p95 or guest memory p95 above the thresholds; check CPU Ready on the contention
+  dashboard before adding vCPUs.
+- **Memory** columns need qemu-guest-agent (they use available minus MemAvailable, so reclaimable page cache does not
+  count as used). VMs without it show blanks, not zeros.
+- **Running** means a current VMI exists, so VMs that were stopped inside the window do not distort the totals.
+- **Stopped VMs** come from `kubevirt_vm_info{status_group="non_running"}`. The "last transition" timestamp metric
+  exists for every VM (0 for running or unknown), so it is only used for the days-stopped column.
+- **PVCs used by neither a VM nor a pod** excludes system namespaces and image-backed volumes; it still only
+  lists *candidates*: a PVC can be bound for a purpose the metrics cannot see.
+- **N-1 headroom** = pod memory requests / (allocatable memory minus the largest host); hosts exclude the witness
+  (label `node-role.harvesterhci.io/witness`). Above 100% the cluster cannot reschedule everything if that host fails.
+- Tables join their columns with Grafana's `merge` transformation on namespace/VM, so each column query is
+  restricted to the same VM set; the VM name links to the detail dashboard.
 
 ## vSphere to Harvester mapping used
 
@@ -168,6 +197,10 @@ I/O "some" 38.7% / "full" 31.9%, memory 0); the per-VM panels stay at 0 until th
 1. Decide whether to enable PSI (above); until then the default dashboards have no pressure panels.
 2. Load test one VM (CPU and memory stress) to see CPU Ready and guest memory react.
 3. Guest-agent metrics exist only for VMs running qemu-guest-agent (10 VMIs report `usable` here).
+4. Right-sizing and capacity dashboards: every query was run against the lab Prometheus (the tables' merged
+   columns were checked row by row, including with loosened thresholds), but the Grafana rendering of the tables
+   (column order, cell colours, sorting, VM links) has not been looked at yet.
+5. Their conclusions rest on 5 days of data; see "Right-sizing and capacity: how to read them".
 
 ## Releasing
 

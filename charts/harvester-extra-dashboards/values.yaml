@@ -23,6 +23,13 @@ dashboards:
   detail:
     # -- "[SV+] Harvester VM Info Detail v2" (uid harvester-vm-detail-v2)
     enabled: true
+  rightsizing:
+    # -- "[SV+] Harvester Right-Sizing" (uid harvester-rightsizing-v1): idle, over- and under-provisioned VMs
+    enabled: true
+  capacity:
+    # -- "[SV+] Harvester Capacity & Reclaim" (uid harvester-capacity-v1): overcommit, N-1 headroom, stopped VMs,
+    # Longhorn efficiency, unused volumes
+    enabled: true
 
 # -- Extra labels added to every dashboard ConfigMap
 labels: {}

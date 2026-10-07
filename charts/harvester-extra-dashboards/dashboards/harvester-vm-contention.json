@@ -394,7 +394,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(node_vmstat_oom_kill[1h]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"}) + (sum(increase(container_oom_events_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[1h])) or vector(0))",
+          "expr": "sum(increase(node_vmstat_oom_kill[1h]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})) + (sum(increase(container_oom_events_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[1h])) or vector(0))",
           "legendFormat": "",
           "range": false,
           "instant": true
@@ -1338,7 +1338,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"}",
+          "expr": "(100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -1418,7 +1418,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(node_vmstat_pgmajfault[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"}",
+          "expr": "rate(node_vmstat_pgmajfault[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})",
           "legendFormat": "{{nodename}} major faults/s",
           "range": true,
           "instant": false
@@ -1429,7 +1429,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "increase(node_vmstat_oom_kill[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"}",
+          "expr": "increase(node_vmstat_oom_kill[5m]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})",
           "legendFormat": "{{nodename}} OOM kills",
           "range": true,
           "instant": false

@@ -1,0 +1,1819 @@
+{
+  "uid": "harvester-rightsizing-v1",
+  "title": "[SV+] Harvester Right-Sizing",
+  "description": "Idle, over- and under-provisioned VMs, with a suggested size and the vCPU/memory that could be reclaimed. Based on p95 usage over the look-back window; Prometheus in the Harvester add-on keeps only 5 days.",
+  "tags": [
+    "harvester",
+    "kubevirt",
+    "rightsizing",
+    "sv-plus"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "",
+  "links": [
+    {
+      "title": "Capacity & Reclaim",
+      "type": "link",
+      "url": "/d/harvester-capacity-v1",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "VM Contention",
+      "type": "link",
+      "url": "/d/harvester-vm-contention-v1",
+      "icon": "external link",
+      "targetBlank": false
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "datasource",
+        "label": "Data source",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "namespace",
+        "label": "Namespace",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kubevirt_vmi_info, namespace)",
+        "query": {
+          "query": "label_values(kubevirt_vmi_info, namespace)",
+          "refId": "namespace"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "hide": 0,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "type": "query",
+        "name": "vm",
+        "label": "VM",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(kubevirt_vmi_info{namespace=~\"$namespace\"}, name)",
+        "query": {
+          "query": "label_values(kubevirt_vmi_info{namespace=~\"$namespace\"}, name)",
+          "refId": "vm"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "hide": 0,
+        "allValue": ".+",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "type": "custom",
+        "name": "window",
+        "label": "Look-back window",
+        "query": "1d,3d,5d",
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "3d",
+          "value": "3d"
+        },
+        "options": [
+          {
+            "selected": false,
+            "text": "1d",
+            "value": "1d"
+          },
+          {
+            "selected": true,
+            "text": "3d",
+            "value": "3d"
+          },
+          {
+            "selected": false,
+            "text": "5d",
+            "value": "5d"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "target",
+        "label": "Target utilisation % (sizing)",
+        "query": "70",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "70",
+          "value": "70"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "70",
+            "value": "70"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "idle_cpu",
+        "label": "Idle: CPU p95 below %",
+        "query": "5",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "5",
+          "value": "5"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "5",
+            "value": "5"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "idle_net",
+        "label": "Idle: network avg below kbit/s",
+        "query": "50",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "50",
+          "value": "50"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "50",
+            "value": "50"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "idle_iops",
+        "label": "Idle: disk IOPS avg below",
+        "query": "5",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "5",
+          "value": "5"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "5",
+            "value": "5"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "under_cpu",
+        "label": "Under-sized: CPU p95 above %",
+        "query": "85",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "85",
+          "value": "85"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "85",
+            "value": "85"
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "under_mem",
+        "label": "Under-sized: memory p95 above %",
+        "query": "90",
+        "hide": 0,
+        "current": {
+          "selected": false,
+          "text": "90",
+          "value": "90"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "90",
+            "value": "90"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Summary (look-back window and thresholds are the variables above)",
+      "collapsed": false,
+      "id": 1,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Running VMs",
+      "description": "VMs with a running instance in the selection.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 2,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Idle VM candidates",
+      "description": "Running VMs whose CPU p95, average network and average disk IOPS are all below the idle thresholds for the whole window. Candidates to power off or remove, to confirm with the owner: a VM that works only occasionally (monthly jobs) looks idle in a short window.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 3,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "VMs with reclaimable resources",
+      "description": "Running VMs whose p95 usage would fit in fewer vCPUs or less memory at the target utilisation.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 4,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(((clamp_min((count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) - ((clamp_min(ceil((quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / ($target / 100)), 1)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > 0 or on (namespace, name) ((clamp_min((max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) - ((clamp_min(ceil((quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / ($target / 100) / 1073741824), 1) * 1073741824) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) > 0) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "vCPUs reclaimable",
+      "description": "Sum over VMs of (provisioned vCPUs - vCPUs needed for p95 CPU at the target utilisation).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 5,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum((clamp_min((count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) - ((clamp_min(ceil((quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / ($target / 100)), 1)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Memory reclaimable",
+      "description": "Sum over VMs of (allocated memory - memory needed for p95 guest usage at the target utilisation). Only VMs running qemu-guest-agent report guest memory.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 6,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum((clamp_min((max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) - ((clamp_min(ceil((quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / ($target / 100) / 1073741824), 1) * 1073741824) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Under-sized VMs",
+      "description": "VMs above the under-sized CPU or memory p95 thresholds.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 7,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) > $under_cpu) or on (namespace, name) ((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) > $under_mem)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) or vector(0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "n/a",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Provisioned vs actually used (fleet, selected VMs)",
+      "collapsed": false,
+      "id": 8,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "vCPUs provisioned vs cores used",
+      "description": "Provisioned vCPUs of running VMs against the CPU cores they use.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum((count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "legendFormat": "vCPUs provisioned",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum((sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "legendFormat": "cores used",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory allocated vs guest memory used",
+      "description": "Memory allocated to running VMs against guest memory in use (available - MemAvailable, so reclaimable page cache is not counted as used; guest agent needed).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 10,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "legendFormat": "allocated",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum((max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "legendFormat": "used by guests",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Idle VM candidates",
+      "collapsed": false,
+      "id": 11,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Idle VM candidates",
+      "description": "All three tests passed over the window: CPU p95 < idle threshold, average network < idle kbit/s, average disk IOPS < idle IOPS.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 12,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) < $idle_cpu) and on (namespace, name) ((avg_over_time((8 * (sum by (namespace, name) (rate(kubevirt_vmi_network_receive_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_network_transmit_bytes_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m]))))[$window:5m])) / 1000 < $idle_net) and on (namespace, name) ((avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_read_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])) + sum by (namespace, name) (rate(kubevirt_vmi_storage_iops_write_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) < $idle_iops)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "name": "VM",
+              "Value #A": "vCPUs",
+              "Value #B": "Memory",
+              "Value #C": "CPU p95 %",
+              "Value #D": "CPU avg %",
+              "Value #E": "Net avg kbit/s",
+              "Value #F": "IOPS avg"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Namespace": 1,
+              "VM": 2,
+              "vCPUs": 3,
+              "Memory": 4,
+              "CPU p95 %": 5,
+              "CPU avg %": 6,
+              "Net avg kbit/s": 7,
+              "IOPS avg": 8
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPUs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU p95 %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU avg %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Net avg kbit/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "IOPS avg"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open VM detail",
+                    "url": "/d/harvester-vm-detail-v2?var-namespace=${__data.fields.Namespace}&var-vm=${__value.text}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "vCPUs",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "Right-sizing: provisioned vs p95 usage",
+      "collapsed": false,
+      "id": 13,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Right-sizing recommendations (running VMs)",
+      "description": "Suggested = p95 usage / target utilisation, rounded up (vCPUs to whole cores, memory to whole GiB). A suggestion, not a promise: the window is short, and memory columns are empty for VMs without qemu-guest-agent. CPU peak % shows how far spikes went.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 14,
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (avg_over_time((sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(100 * (max_over_time((sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(clamp_min(ceil((quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / ($target / 100)), 1)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(clamp_min((count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) - ((clamp_min(ceil((quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / ($target / 100)), 1)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(clamp_min(ceil((quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / ($target / 100) / 1073741824), 1) * 1073741824) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "(clamp_min((max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) - ((clamp_min(ceil((quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / ($target / 100) / 1073741824), 1) * 1073741824) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})), 0)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "name": "VM",
+              "Value #A": "vCPUs",
+              "Value #B": "CPU avg %",
+              "Value #C": "CPU p95 %",
+              "Value #D": "CPU peak %",
+              "Value #E": "Suggested vCPUs",
+              "Value #F": "vCPUs reclaimable",
+              "Value #G": "Memory",
+              "Value #H": "Memory p95 used",
+              "Value #I": "Suggested memory",
+              "Value #J": "Memory reclaimable"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Namespace": 1,
+              "VM": 2,
+              "vCPUs": 3,
+              "CPU avg %": 4,
+              "CPU p95 %": 5,
+              "CPU peak %": 6,
+              "Suggested vCPUs": 7,
+              "vCPUs reclaimable": 8,
+              "Memory": 9,
+              "Memory p95 used": 10,
+              "Suggested memory": 11,
+              "Memory reclaimable": 12
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPUs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU avg %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU p95 %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "green",
+                      "value": 30
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU peak %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Suggested vCPUs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPUs reclaimable"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 4
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory p95 used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Suggested memory"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory reclaimable"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open VM detail",
+                    "url": "/d/harvester-vm-detail-v2?var-namespace=${__data.fields.Namespace}&var-vm=${__value.text}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "vCPUs reclaimable",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "Under-provisioned VMs",
+      "collapsed": false,
+      "id": 15,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Under-sized VM candidates",
+      "description": "CPU p95 above the under-sized CPU threshold, or guest memory p95 above the memory threshold, over the window. Check CPU Ready on the contention dashboard before adding vCPUs.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 16,
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) > $under_cpu) or on (namespace, name) ((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) > $under_mem)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) > $under_cpu) or on (namespace, name) ((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) > $under_mem)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((100 * (max_over_time((sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) > $under_cpu) or on (namespace, name) ((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) > $under_mem)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) > $under_cpu) or on (namespace, name) ((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) > $under_mem)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"})) and on (namespace, name) ((((100 * (quantile_over_time(0.95, (sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"}[5m])))[$window:5m])) / (count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total{namespace=~\"$namespace\",name=~\"$vm\"})))) > $under_cpu) or on (namespace, name) ((100 * (quantile_over_time(0.95, (max by (namespace, name) (kubevirt_vmi_memory_available_bytes{namespace=~\"$namespace\",name=~\"$vm\"}) - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))[$window:5m])) / (max by (namespace, name) (kubevirt_vmi_memory_domain_bytes{namespace=~\"$namespace\",name=~\"$vm\"}))) > $under_mem)) and on (namespace, name) max by (namespace, name) (kubevirt_vmi_info{namespace=~\"$namespace\",name=~\"$vm\"}))",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "name": "VM",
+              "Value #A": "vCPUs",
+              "Value #B": "CPU p95 %",
+              "Value #C": "CPU peak %",
+              "Value #D": "Memory",
+              "Value #E": "Memory p95 %"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Namespace": 1,
+              "VM": 2,
+              "vCPUs": 3,
+              "CPU p95 %": 4,
+              "CPU peak %": 5,
+              "Memory": 6,
+              "Memory p95 %": 7
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true,
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vCPUs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU p95 %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU peak %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory p95 %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VM"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open VM detail",
+                    "url": "/d/harvester-vm-detail-v2?var-namespace=${__data.fields.Namespace}&var-vm=${__value.text}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "CPU p95 %",
+            "desc": true
+          }
+        ]
+      }
+    }
+  ]
+}
