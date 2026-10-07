@@ -63,6 +63,37 @@ The three PSI alerts stay silent until the nodes boot with `psi=1`.
 | HarvesterBackupError | warning | a Longhorn backup ended in Error | the backup job and the backup target |
 | HarvesterSnapshotSpaceHigh | warning | snapshots hold over 50% of the used Longhorn space, for 6 h | Backup, largest snapshot consumers |
 
+## What an alert email looks like
+
+With the example Alertmanager route and the Mailpit sink from [../alertmanager](../alertmanager/README.md) and
+[../mailpit](../mailpit/README.md), each alert arrives as one mail per alert group. This is a real one from the
+lab (names generic):
+
+```
+From:     alertmanager@harvester.lab
+To:       alerts@example.invalid
+Subject:  [FIRING:1] HarvesterMemoryN1Exceeded (cattle-monitoring-system/rancher-monitoring-prometheus warning)
+
+1 alert for alertname=HarvesterMemoryN1Exceeded            [ View In Alertmanager ]
+
+[1] Firing
+Labels
+  alertname  = HarvesterMemoryN1Exceeded
+  prometheus = cattle-monitoring-system/rancher-monitoring-prometheus
+  severity   = warning
+Annotations
+  description = Memory requests are 152% of what the cluster would have after losing its largest host:
+                that host's workloads could not be rescheduled.
+  summary     = The cluster cannot lose its biggest host
+  Source (link to the expression in Prometheus)
+```
+
+The subject carries the state (`FIRING:n` or `RESOLVED`), the alert name, the grouping labels and the severity. The
+body gives the labels (which VM or node, from the alert's own labels) and the `description` and `summary`
+annotations, which already name the number that crossed the threshold. Resolved alerts arrive as a second mail.
+The inbox list shows one line per mail, so an alert that keeps repeating (this one was re-sent every few hours)
+is easy to spot by its repeated subject.
+
 ## Checking that they are loaded
 
 ```
