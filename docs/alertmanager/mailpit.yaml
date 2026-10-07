@@ -1,0 +1,65 @@
+# Throwaway in-cluster mail catcher to prove the Alertmanager route and receiver work, before any real SMTP
+# relay is involved. Nothing is delivered outside the cluster: Mailpit accepts any message on port 1025 and shows
+# it in a web UI on 8025. Delete it when done:  kubectl delete -f mailpit.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: mailpit
+    app.kubernetes.io/part-of: harvester-extra-dashboards
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mailpit
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mailpit
+        app.kubernetes.io/part-of: harvester-extra-dashboards
+    spec:
+      containers:
+        - name: mailpit
+          image: docker.io/axllent/mailpit:v1.31.4
+          env:
+            - name: MP_SMTP_AUTH_ACCEPT_ANY       # no login needed; this is a sink, not a relay
+              value: "1"
+            - name: MP_SMTP_AUTH_ALLOW_INSECURE   # plain SMTP inside the cluster
+              value: "1"
+            - name: MP_DATABASE
+              value: /data/mailpit.db
+            - name: MP_MAX_MESSAGES
+              value: "500"
+          ports:
+            - {name: smtp, containerPort: 1025}
+            - {name: http, containerPort: 8025}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: mailpit
+    app.kubernetes.io/part-of: harvester-extra-dashboards
+spec:
+  selector:
+    app.kubernetes.io/name: mailpit
+  ports:
+    - {name: smtp, port: 1025, targetPort: smtp}
+    - {name: http, port: 8025, targetPort: http}
