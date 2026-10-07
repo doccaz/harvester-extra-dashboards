@@ -61,13 +61,43 @@ Re-apply the backed-up Secret (`kubectl apply -f alertmanager-secret.backup.yaml
 `resourceVersion`, `uid` and `creationTimestamp` if apply complains). To remove the mail sink as well, see "Operations"
 in the Mailpit README.
 
+## Links in the mail: set the hostname
+
+Every alert mail has two links: **View In Alertmanager** and **Source** (the expression in Prometheus). They are built
+from the `externalUrl` of the Alertmanager and Prometheus objects, which the `rancher-monitoring` add-on fills with the
+**cluster VIP** (`https://<VIP>/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-alertmanager:9093/proxy/`).
+Opened from a mail, that address answers "not authorized": the Harvester API behind it wants the session of the
+Harvester UI, and the browser's login belongs to the hostname you use for Harvester, not to the bare IP.
+
+Set both URLs to the hostname you log in with (the lab uses `harvester.conteudoquestionavel.org`), in the add-on's
+values (Harvester UI: *Advanced > Add-ons > rancher-monitoring > Edit YAML*, or the `addons.harvesterhci.io` object):
+
+```yaml
+alertmanager:
+  alertmanagerSpec:
+    externalUrl: "https://harvester.example.org/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-alertmanager:9093/proxy/"
+prometheus:
+  prometheusSpec:
+    externalUrl: "https://harvester.example.org/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-prometheus:9090/proxy/"
+```
+
+Change only those two lines (the existing values already hold other settings). Saving redeploys the monitoring stack:
+Alertmanager and Prometheus restart, so do it outside an incident. The links work while you are logged in to Harvester
+in that browser; they do not work for someone who cannot reach that hostname. Mails sent before the change keep the old
+links.
+
+Checked on the lab (2026-10-07): after this change both objects showed the new URL, and the mail route in the
+Alertmanager Secret was untouched by that add-on redeploy.
+
 ## Notes and caveats
 
 - **Why the global config and not `AlertmanagerConfig` resources (or their UI):** the Prometheus operator adds
   `namespace="<the AlertmanagerConfig's namespace>"` to such routes by default, and these alerts carry the *VM's*
   namespace (`labs`) or none at all (N-1, node alerts), so they would not match.
-- **Persistence (not verified):** the Secret is created by the monitoring chart, so redeploying the add-on may reset
-  it. The durable place is the add-on's `valuesContent` (`alertmanager.config`). Test that before relying on it.
+- **Persistence (partly verified):** the Secret is created by the monitoring chart, so redeploying the add-on may reset
+  it. On the lab an add-on redeploy (changing only the two external URLs above) left the Secret and the route intact,
+  but an add-on *upgrade* or a change to `alertmanager.config` may not. The durable place is the add-on's
+  `valuesContent` (`alertmanager.config`); keep a copy of the Secret and re-check the route after any add-on change.
 - **Other alerts:** the Kubernetes built-ins firing in the lab (`KubeCPUOvercommit`, `KubeMemoryOvercommit`,
   `CPUThrottlingHigh`, `KubeJobFailed`, `LonghornVolumeActualSpaceUsedWarning`) stay on `"null"`. Widen the matcher if
   you want them mailed.

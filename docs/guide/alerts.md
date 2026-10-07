@@ -94,6 +94,14 @@ annotations, which already name the number that crossed the threshold. Resolved 
 The inbox list shows one line per mail, so an alert that keeps repeating (this one was re-sent every few hours)
 is easy to spot by its repeated subject.
 
+**The two links.** *View In Alertmanager* and *Source* point at the address the monitoring add-on gives Alertmanager and
+Prometheus, which by default is the cluster **VIP**. Opened from a mail that address says "not authorized", because your
+Harvester login belongs to the hostname you use for the UI. Set both `externalUrl` values in the `rancher-monitoring`
+add-on to that hostname (steps and a checked example in
+[../alertmanager](../alertmanager/README.md#links-in-the-mail-set-the-hostname)). Until then, replace the host in the
+link by hand and keep the path.
+
+
 ## Checking that they are loaded
 
 ```
