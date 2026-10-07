@@ -17,6 +17,8 @@ Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring` 108.0.2
 | **[SV+] Harvester VM Scorecard** (`harvester-vm-scorecard-v1`) | One sortable row per running VM: CPU used/Ready, guest and launcher memory, VM-level and Longhorn write latency, IOPS, drops, unhealthy volumes, volumes never backed up, and the right-sizing savings. **Flags** counts the warning thresholds a VM is over; the VM name opens the detail dashboard. |
 | **[SV+] Harvester Backup & Protection** (`harvester-backup-v1`) | Which VMs are protected by Longhorn backups: fully protected, never backed up, stale (threshold is a variable), the size of the data that has never been backed up, backups in error, plus the space held by snapshots (user-created vs Longhorn's own), backup storage over time, and a per-VM table with newest/oldest backup age and snapshot space. |
 
+**How to read every panel, with screenshots: [docs/guide](docs/guide/README.md)** (one page per dashboard and for the alerts, plus [example readings from a lab](docs/guide/lab-readings.md)).
+
 ## Install
 
 Needs the Harvester `rancher-monitoring` add-on enabled (Grafana's sidecar loads ConfigMaps labelled
@@ -56,6 +58,7 @@ ConfigMaps are named `<release>-vm-contention`, `<release>-vm-detail-v2`, `<rele
 - `verify-metrics.py`: run against a live Prometheus; reports which panels lack metrics, plus the label/join assumptions.
 - `verify-queries.py`: run against a live Prometheus; executes every dashboard query the way Grafana does (6 h range for graphs, instant for tiles and tables) and every alert expression, and fails on any error. It exists because `validate.py` (syntax) and instant queries both missed a `found duplicate series` error that only shows in a long range after a kube-state-metrics restart.
 - `apply.sh`: Helm-less alternative that loads the dashboard JSON as ConfigMaps (not the alerts); `--psi` selects the PSI variant, `--delete` removes them.
+- `docs/guide/`: user guide (overview, one page per dashboard, alerts, example lab readings) with screenshots in `docs/guide/images/`. Not part of the chart.
 - `docs/alertmanager/`: how to email the alerts (a tested Alertmanager route and receiver). The default Harvester Alertmanager sends alerts nowhere.
 - `docs/mailpit/`: the lab's mail sink (Mailpit with persistent storage, two random logins and an Ingress) that makes the alert emails readable in a browser; manifest, install, operations and troubleshooting.
 
