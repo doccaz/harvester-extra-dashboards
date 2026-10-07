@@ -1,7 +1,7 @@
 [
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "VMs with CPU Ready > 5%",
+    "panel": "VMs: CPU Ready > 5%",
     "metrics": [
       "kubevirt_vmi_vcpu_delay_seconds_total",
       "kubevirt_vmi_vcpu_seconds_total"
@@ -19,7 +19,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "VMs with guest memory > 90%",
+    "panel": "VMs: guest mem > 90%",
     "metrics": [
       "kubevirt_vmi_memory_available_bytes",
       "kubevirt_vmi_memory_usable_bytes"
@@ -28,7 +28,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Max VM memory pressure (PSI)",
+    "panel": "Max VM memory PSI",
     "metrics": [
       "container_pressure_memory_waiting_seconds_total"
     ],
@@ -36,7 +36,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "Max VM CPU pressure (PSI)",
+    "panel": "Max VM CPU PSI",
     "metrics": [
       "container_pressure_cpu_waiting_seconds_total"
     ],
@@ -54,7 +54,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "VMs with launcher memory > 90% of limit",
+    "panel": "VMs near memory limit",
     "metrics": [
       "container_memory_working_set_bytes",
       "kube_pod_container_resource_limits"
@@ -63,7 +63,7 @@
   },
   {
     "dashboard": "harvester-vm-contention-v1",
-    "panel": "VMs CPU-throttled > 5%",
+    "panel": "VMs throttled > 5%",
     "metrics": [
       "container_cpu_cfs_periods_total",
       "container_cpu_cfs_throttled_periods_total"
@@ -510,7 +510,7 @@
   },
   {
     "dashboard": "harvester-rightsizing-v1",
-    "panel": "VMs with reclaimable resources",
+    "panel": "Oversized VMs",
     "metrics": [
       "kubevirt_vmi_cpu_usage_seconds_total",
       "kubevirt_vmi_info",
@@ -629,7 +629,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Memory allocated to VMs",
+    "panel": "Memory allocated",
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
@@ -639,7 +639,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Memory requested by pods",
+    "panel": "Memory requested",
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
@@ -649,7 +649,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Requests vs capacity after losing the biggest host",
+    "panel": "N-1 memory headroom",
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
@@ -667,7 +667,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Longhorn scheduled vs capacity",
+    "panel": "Longhorn scheduled",
     "metrics": [],
     "psi": false
   },
@@ -723,7 +723,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Disk allocated to stopped VMs",
+    "panel": "Stopped: provisioned",
     "metrics": [
       "kubevirt_vm_disk_allocated_size_bytes",
       "kubevirt_vm_info"
@@ -732,7 +732,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Disk actually used by stopped VMs",
+    "panel": "Stopped: actually used",
     "metrics": [
       "kubevirt_vm_disk_allocated_size_bytes",
       "kubevirt_vm_info"
@@ -741,7 +741,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "VMs stopped over 30 days",
+    "panel": "Stopped > 30 days",
     "metrics": [
       "kubevirt_vm_info",
       "kubevirt_vm_non_running_status_last_transition_timestamp_seconds"
@@ -760,7 +760,7 @@
   },
   {
     "dashboard": "harvester-capacity-v1",
-    "panel": "Thin-provisioning: actual / provisioned",
+    "panel": "Thin usage",
     "metrics": [],
     "psi": false
   },

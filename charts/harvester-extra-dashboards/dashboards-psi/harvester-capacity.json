@@ -188,7 +188,7 @@
     },
     {
       "type": "stat",
-      "title": "Memory allocated to VMs",
+      "title": "Memory allocated",
       "description": "Memory allocated to running VMs / allocatable memory of the hosts.",
       "datasource": {
         "type": "prometheus",
@@ -253,7 +253,7 @@
     },
     {
       "type": "stat",
-      "title": "Memory requested by pods",
+      "title": "Memory requested",
       "description": "Sum of pod memory requests on the hosts / allocatable memory: what the scheduler sees.",
       "datasource": {
         "type": "prometheus",
@@ -318,7 +318,7 @@
     },
     {
       "type": "stat",
-      "title": "Requests vs capacity after losing the biggest host",
+      "title": "N-1 memory headroom",
       "description": "Memory requests / (allocatable - the largest host). Above 100% the cluster cannot reschedule everything if that host fails.",
       "datasource": {
         "type": "prometheus",
@@ -440,7 +440,7 @@
     },
     {
       "type": "stat",
-      "title": "Longhorn scheduled vs capacity",
+      "title": "Longhorn scheduled",
       "description": "Storage scheduled (replicas included) / usable disk capacity of the Longhorn nodes. Longhorn refuses new volumes beyond its over-provisioning limit.",
       "datasource": {
         "type": "prometheus",
@@ -875,7 +875,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "avg_over_time((100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m])",
+          "expr": "max by (nodename) (avg_over_time((100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m]))",
           "format": "table",
           "instant": true,
           "range": false
@@ -886,7 +886,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "quantile_over_time(0.95, (100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m])",
+          "expr": "max by (nodename) (quantile_over_time(0.95, (100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m]))",
           "format": "table",
           "instant": true,
           "range": false
@@ -897,7 +897,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "avg_over_time((100 * (1 - max by (instance) (node_memory_MemAvailable_bytes) / max by (instance) (node_memory_MemTotal_bytes)) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m])",
+          "expr": "max by (nodename) (avg_over_time((100 * (1 - max by (instance) (node_memory_MemAvailable_bytes) / max by (instance) (node_memory_MemTotal_bytes)) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m]))",
           "format": "table",
           "instant": true,
           "range": false
@@ -908,7 +908,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "quantile_over_time(0.95, (100 * (1 - max by (instance) (node_memory_MemAvailable_bytes) / max by (instance) (node_memory_MemTotal_bytes)) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m])",
+          "expr": "max by (nodename) (quantile_over_time(0.95, (100 * (1 - max by (instance) (node_memory_MemAvailable_bytes) / max by (instance) (node_memory_MemTotal_bytes)) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info))[$window:5m]))",
           "format": "table",
           "instant": true,
           "range": false
@@ -923,7 +923,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "nodename": "Node",
@@ -1103,7 +1111,7 @@
     },
     {
       "type": "stat",
-      "title": "Disk allocated to stopped VMs",
+      "title": "Stopped: provisioned",
       "description": "Provisioned size of the disks of VMs that are not running.",
       "datasource": {
         "type": "prometheus",
@@ -1160,7 +1168,7 @@
     },
     {
       "type": "stat",
-      "title": "Disk actually used by stopped VMs",
+      "title": "Stopped: actually used",
       "description": "Longhorn actual (thin) size of those disks, one replica.",
       "datasource": {
         "type": "prometheus",
@@ -1217,7 +1225,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs stopped over 30 days",
+      "title": "Stopped > 30 days",
       "description": "Stopped VMs whose last transition is more than 30 days ago.",
       "datasource": {
         "type": "prometheus",
@@ -1237,7 +1245,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "count(((time() - kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"}) / 86400 and on (namespace, name) (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"} > 0) and on (namespace, name) kubevirt_vm_info{status_group=\"non_running\",namespace=~\"$namespace\"}) > 30) or vector(0)",
+          "expr": "count((max by (namespace, name) ((time() - kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"}) / 86400 and on (namespace, name) (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"} > 0) and on (namespace, name) kubevirt_vm_info{status_group=\"non_running\",namespace=~\"$namespace\"})) > 30) or vector(0)",
           "legendFormat": "",
           "range": false,
           "instant": true
@@ -1302,7 +1310,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(time() - kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"}) / 86400 and on (namespace, name) (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"} > 0) and on (namespace, name) kubevirt_vm_info{status_group=\"non_running\",namespace=~\"$namespace\"}",
+          "expr": "max by (namespace, name) ((time() - kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"}) / 86400 and on (namespace, name) (kubevirt_vm_non_running_status_last_transition_timestamp_seconds{namespace=~\"$namespace\"} > 0) and on (namespace, name) kubevirt_vm_info{status_group=\"non_running\",namespace=~\"$namespace\"})",
           "format": "table",
           "instant": true,
           "range": false
@@ -1339,7 +1347,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "namespace": "Namespace",
@@ -1493,7 +1509,7 @@
     },
     {
       "type": "stat",
-      "title": "Thin-provisioning: actual / provisioned",
+      "title": "Thin usage",
       "description": "Longhorn volumes' actual size over their capacity.",
       "datasource": {
         "type": "prometheus",
@@ -1720,7 +1736,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "kube_persistentvolumeclaim_resource_requests_storage_bytes and on (namespace, persistentvolumeclaim) (kube_persistentvolumeclaim_info{storageclass=~\"harvester-.*\",namespace=~\"$namespace\",namespace!~\"cattle-.*|harvester-.*|kube-.*|longhorn-system\"} unless on (namespace, persistentvolumeclaim) kubevirt_vm_disk_allocated_size_bytes unless on (namespace, persistentvolumeclaim) kube_pod_spec_volumes_persistentvolumeclaims_info)",
+          "expr": "max by (namespace, persistentvolumeclaim) (kube_persistentvolumeclaim_resource_requests_storage_bytes and on (namespace, persistentvolumeclaim) (kube_persistentvolumeclaim_info{storageclass=~\"harvester-.*\",namespace=~\"$namespace\",namespace!~\"cattle-.*|harvester-.*|kube-.*|longhorn-system\"} unless on (namespace, persistentvolumeclaim) kubevirt_vm_disk_allocated_size_bytes unless on (namespace, persistentvolumeclaim) kube_pod_spec_volumes_persistentvolumeclaims_info))",
           "format": "table",
           "instant": true,
           "range": false
@@ -1735,7 +1751,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "namespace": "Namespace",
@@ -1816,7 +1840,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(15, longhorn_volume_actual_size_bytes and on (volume) (longhorn_volume_state{state=\"detached\"} == 1))",
+          "expr": "max by (pvc_namespace, pvc) (topk(15, longhorn_volume_actual_size_bytes and on (volume) (longhorn_volume_state{state=\"detached\"} == 1)))",
           "format": "table",
           "instant": true,
           "range": false
@@ -1827,7 +1851,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "longhorn_volume_capacity_bytes and on (volume) topk(15, longhorn_volume_actual_size_bytes and on (volume) (longhorn_volume_state{state=\"detached\"} == 1))",
+          "expr": "max by (pvc_namespace, pvc) (longhorn_volume_capacity_bytes and on (volume) (topk(15, longhorn_volume_actual_size_bytes and on (volume) (longhorn_volume_state{state=\"detached\"} == 1))))",
           "format": "table",
           "instant": true,
           "range": false
@@ -1842,7 +1866,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "pvc_namespace": "Namespace",
@@ -1967,7 +1999,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "namespace": "Namespace",

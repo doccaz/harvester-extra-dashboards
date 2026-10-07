@@ -227,7 +227,9 @@ def _table(self, title, desc, cols, w=24, h=10, sort=None, labels=None, vm_link=
                      "instant": True, "range": False} for i, c in enumerate(cols)],
         "transformations": [
             {"id": "merge", "options": {}},
-            {"id": "organize", "options": {"excludeByName": {"Time": True}, "renameByName": rename,
+            {"id": "organize", "options": {"excludeByName": {n: True for n in (
+                "Time", "__name__", "container", "endpoint", "instance", "job", "pod", "service", "prometheus")},
+                                           "renameByName": rename,
                                            "indexByName": order}}],
         "fieldConfig": {"defaults": {"custom": {"align": "auto", "filterable": True,
                                                 "cellOptions": {"type": "auto"}}},
@@ -301,31 +303,31 @@ def contention():
                 "icon": "external link", "targetBlank": False}])
 
     d.row("Overview: is anything being starved right now?")
-    d.stat("VMs with CPU Ready > 5%", "VMs whose vCPUs spend more than 5% of the time runnable but not "
+    d.stat("VMs: CPU Ready > 5%", "VMs whose vCPUs spend more than 5% of the time runnable but not "
            "scheduled. vSphere guidance: >5% per vCPU is a warning, >10% is a problem.",
            "count((%s) > 5) or vector(0)" % cpu_ready(), thr=OK_WARN_BAD(1, 5))
     d.stat("Worst CPU Ready", "Highest CPU Ready % of any VM in the selection.",
            "max(%s)" % cpu_ready(), unit="percent", thr=OK_WARN_BAD(5, 10))
-    d.stat("VMs with guest memory > 90%", "VMs whose guest OS reports less than 10% memory available "
+    d.stat("VMs: guest mem > 90%", "VMs whose guest OS reports less than 10% memory available "
            "(MemAvailable, so page cache is NOT counted as used). Needs qemu-guest-agent.",
            "count((%s) > 90) or vector(0)" % guest_mem_pct(), thr=OK_WARN_BAD(1, 3))
-    d.stat("Max VM memory pressure (PSI)", "Highest share of the last 5 minutes in which a VM's launcher "
+    d.stat("Max VM memory PSI", "Highest share of the last 5 minutes in which a VM's launcher "
            "cgroup stalled waiting for memory (kernel PSI via cAdvisor). Any sustained value means the VM is "
            "being reclaimed or is thrashing on the host.",
            "max(%s)" % launcher_psi("memory"), unit="percent", thr=OK_WARN_BAD(1, 10))
-    d.stat("Max VM CPU pressure (PSI)", "Highest share of the last 5 minutes in which a VM's launcher cgroup "
+    d.stat("Max VM CPU PSI", "Highest share of the last 5 minutes in which a VM's launcher cgroup "
            "waited for a CPU (PSI via cAdvisor): CPU limit throttling plus run-queue wait.",
            "max(%s)" % launcher_psi("cpu"), unit="percent", thr=OK_WARN_BAD(10, 25))
-    d.stat("OOM kills (1h)", "OOM kills on the nodes plus OOM events of virt-launcher compute containers "
-           "in the last hour. A launcher OOM kill takes the VM down.",
-           "sum(increase(node_vmstat_oom_kill[1h]) %s) + "
-           "(sum(increase(container_oom_events_total{%s}[1h])) or vector(0))" % (NJ, LP),
+    d.stat("OOM kills (1h)", "Kernel OOM kills on the nodes (any process, including pods killed at their memory limit) plus OOM "
+           "events of virt-launcher compute containers in the last hour. A launcher OOM kill takes the VM down.",
+           "round(sum(increase(node_vmstat_oom_kill[1h]) %s) + "
+           "(sum(increase(container_oom_events_total{%s}[1h])) or vector(0)))" % (NJ, LP),
            thr=steps(("green", None), ("red", 1)))
 
-    d.stat("VMs with launcher memory > 90% of limit", "VMs whose virt-launcher working set is above 90% "
+    d.stat("VMs near memory limit", "VMs whose virt-launcher working set is above 90% "
            "of its memory limit: OOM-kill risk for the VM.",
            "count((%s) > 90) or vector(0)" % launcher_ws_pct(), thr=OK_WARN_BAD(1, 3))
-    d.stat("VMs CPU-throttled > 5%", "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
+    d.stat("VMs throttled > 5%", "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
            "count((%s) > 5) or vector(0)" % launcher_name(
                '100 * sum by (namespace, pod) (rate(container_cpu_cfs_throttled_periods_total{%s}[5m])) '
                '/ sum by (namespace, pod) (rate(container_cpu_cfs_periods_total{%s}[5m]))' % (LP, LP)),
@@ -647,7 +649,7 @@ def rightsizing():
            "below the idle thresholds for the whole window. Candidates to power off or remove, to confirm with "
            "the owner: a VM that works only occasionally (monthly jobs) looks idle in a short window.",
            "count(%s) or vector(0)" % IDLE, thr=OK_WARN_BAD(1, 3))
-    d.stat("VMs with reclaimable resources", "Running VMs whose p95 usage would fit in fewer vCPUs or less "
+    d.stat("Oversized VMs", "Running VMs whose p95 usage would fit in fewer vCPUs or less "
            "memory at the target utilisation.",
            "count((%s) > 0 or on (namespace, name) (%s) > 0) or vector(0)" % (RECLAIM_VCPU, RECLAIM_MEM),
            thr=OK_WARN_BAD(1, 5))
@@ -685,18 +687,18 @@ def rightsizing():
             "memory columns are empty for VMs without qemu-guest-agent. CPU peak % shows how far spikes went.",
             [(running(VCPU), "vCPUs", "short", None),
              (CPU_AVG_PCT, "CPU avg %", "percent", None),
-             (CPU_P95_PCT, "CPU p95 %", "percent", steps(("red", None), ("orange", 10), ("green", 30))),
+             (CPU_P95_PCT, "CPU p95 %", "percent", None),
              (CPU_MAX_PCT, "CPU peak %", "percent", None),
-             (SUGGEST_VCPU, "Suggested vCPUs", "short", None),
-             (RECLAIM_VCPU, "vCPUs reclaimable", "short", steps(("green", None), ("orange", 1), ("red", 4))),
-             (running(MEM_ALLOC), "Memory", "bytes", None),
-             (MEM_P95, "Memory p95 used", "bytes", None),
-             (SUGGEST_MEM, "Suggested memory", "bytes", None),
-             (RECLAIM_MEM, "Memory reclaimable", "bytes", None)],
-            sort=("vCPUs reclaimable", True), vm_link=True, h=12)
+             (SUGGEST_VCPU, "Sugg. vCPUs", "short", None),
+             (RECLAIM_VCPU, "vCPU saving", "short", steps(("green", None), ("orange", 1), ("red", 4))),
+             (running(MEM_ALLOC), "Mem", "bytes", None),
+             (MEM_P95, "Mem p95", "bytes", None),
+             (SUGGEST_MEM, "Sugg. mem", "bytes", None),
+             (RECLAIM_MEM, "Mem saving", "bytes", None)],
+            sort=("vCPU saving", True), vm_link=True, h=12)
 
     d.row("Under-provisioned VMs")
-    d.table("Under-sized VM candidates", "CPU p95 above the under-sized CPU threshold, or guest memory p95 above "
+    d.table("Under-sized VM candidates", "If a VM was resized inside the window its p95 reflects the old size too. CPU p95 above the under-sized CPU threshold, or guest memory p95 above "
             "the memory threshold, over the window. Check CPU Ready on the contention dashboard before adding vCPUs.",
             [(of(running(VCPU), UNDER), "vCPUs", "short", None),
              (of(CPU_P95_PCT, UNDER), "CPU p95 %", "percent", steps(("green", None), ("orange", 70), ("red", 85))),
@@ -726,14 +728,18 @@ HOST_MEM = ("100 * (1 - max by (instance) (node_memory_MemAvailable_bytes) "
 VOL_TO_VM = ('sum by (namespace, name) (label_replace(label_replace(%s, "namespace", "$1", "pvc_namespace", "(.*)"), '
              '"persistentvolumeclaim", "$1", "pvc", "(.*)") * on (namespace, persistentvolumeclaim) group_left (name) '
              '(max by (namespace, persistentvolumeclaim, name) (kubevirt_vm_disk_allocated_size_bytes) * 0 + 1))')
-DAYS_STOPPED = "(time() - %s) / 86400 and on (namespace, name) (%s > 0) and on (namespace, name) %s" % (
-    STOP_TS, STOP_TS, STOPPED)
+DAYS_STOPPED = ("max by (namespace, name) ((time() - %s) / 86400 and on (namespace, name) (%s > 0) "
+                "and on (namespace, name) %s)" % (STOP_TS, STOP_TS, STOPPED))
 STOPPED_DISK = "sum by (namespace, name) (kubevirt_vm_disk_allocated_size_bytes) and on (namespace, name) %s" % STOPPED
 STOPPED_ACTUAL = "(%s) and on (namespace, name) %s" % (VOL_TO_VM % "longhorn_volume_actual_size_bytes", STOPPED)
 ORPHAN_PVC = ('kube_persistentvolumeclaim_info{storageclass=~"harvester-.*",namespace=~"$namespace",'
               'namespace!~"cattle-.*|harvester-.*|kube-.*|longhorn-system"} '
               'unless on (namespace, persistentvolumeclaim) kubevirt_vm_disk_allocated_size_bytes '
               'unless on (namespace, persistentvolumeclaim) kube_pod_spec_volumes_persistentvolumeclaims_info')
+
+
+DETACHED_TOP = ('topk(15, longhorn_volume_actual_size_bytes and on (volume) '
+                '(longhorn_volume_state{state="detached"} == 1))')
 
 
 def capacity():
@@ -755,18 +761,18 @@ def capacity():
            "hosts. Harvester overcommits CPU by default (the add-on's overcommit setting), so 3:1 is normal.",
            "sum(count by (namespace, name) (group by (namespace, name, id) (kubevirt_vmi_vcpu_seconds_total))) "
            "/ sum(%s)" % hosts(ALLOC_CPU), thr=steps(("green", None), ("orange", 4), ("red", 8)))
-    d.stat("Memory allocated to VMs", "Memory allocated to running VMs / allocatable memory of the hosts.",
+    d.stat("Memory allocated", "Memory allocated to running VMs / allocatable memory of the hosts.",
            "100 * sum(max by (namespace, name) (kubevirt_vmi_memory_domain_bytes)) / sum(%s)" % hosts(ALLOC_MEM),
            unit="percent", thr=OK_WARN_BAD(70, 90))
-    d.stat("Memory requested by pods", "Sum of pod memory requests on the hosts / allocatable memory: what the "
+    d.stat("Memory requested", "Sum of pod memory requests on the hosts / allocatable memory: what the "
            "scheduler sees.", "100 * sum(%s) / sum(%s)" % (hosts(REQ_MEM), hosts(ALLOC_MEM)), unit="percent",
            thr=OK_WARN_BAD(70, 90))
-    d.stat("Requests vs capacity after losing the biggest host", "Memory requests / (allocatable - the largest "
+    d.stat("N-1 memory headroom", "Memory requests / (allocatable - the largest "
            "host). Above 100% the cluster cannot reschedule everything if that host fails.",
            "100 * sum(%s) / (sum(%s) - max(%s))" % (hosts(REQ_MEM), hosts(ALLOC_MEM), hosts(ALLOC_MEM)),
            unit="percent", thr=OK_WARN_BAD(80, 100))
     d.stat("Stopped VMs", "VMs that are not running.", "count(%s) or vector(0)" % STOPPED)
-    d.stat("Longhorn scheduled vs capacity", "Storage scheduled (replicas included) / usable disk capacity of "
+    d.stat("Longhorn scheduled", "Storage scheduled (replicas included) / usable disk capacity of "
            "the Longhorn nodes. Longhorn refuses new volumes beyond its over-provisioning limit.",
            "100 * sum(longhorn_node_storage_scheduled_bytes) / sum(longhorn_node_storage_capacity_bytes "
            "- longhorn_node_storage_reservation_bytes)", unit="percent", thr=OK_WARN_BAD(80, 100))
@@ -788,20 +794,20 @@ def capacity():
          unit="percent", maxv=100, thr=OK_WARN_BAD(80, 92), w=12)
     d.table("Host utilisation over the look-back window", "Average and p95 of host CPU and memory use. A host "
             "that stays low at p95 has room to take VMs; one that is high at p95 has none.",
-            [("avg_over_time((%s)[$window:5m])" % HOST_CPU, "CPU avg %", "percent", None),
-             ("quantile_over_time(0.95, (%s)[$window:5m])" % HOST_CPU, "CPU p95 %", "percent",
+            [("max by (nodename) (avg_over_time((%s)[$window:5m]))" % HOST_CPU, "CPU avg %", "percent", None),
+             ("max by (nodename) (quantile_over_time(0.95, (%s)[$window:5m]))" % HOST_CPU, "CPU p95 %", "percent",
               steps(("green", None), ("orange", 70), ("red", 90))),
-             ("avg_over_time((%s)[$window:5m])" % HOST_MEM, "Memory avg %", "percent", None),
-             ("quantile_over_time(0.95, (%s)[$window:5m])" % HOST_MEM, "Memory p95 %", "percent",
+             ("max by (nodename) (avg_over_time((%s)[$window:5m]))" % HOST_MEM, "Memory avg %", "percent", None),
+             ("max by (nodename) (quantile_over_time(0.95, (%s)[$window:5m]))" % HOST_MEM, "Memory p95 %", "percent",
               steps(("green", None), ("orange", 80), ("red", 92)))],
             labels={"nodename": "Node"}, sort=("CPU p95 %", True), h=6)
 
     d.row("Stopped VMs and the storage they hold")
-    d.stat("Disk allocated to stopped VMs", "Provisioned size of the disks of VMs that are not running.",
+    d.stat("Stopped: provisioned", "Provisioned size of the disks of VMs that are not running.",
            "sum(%s) or vector(0)" % STOPPED_DISK, unit="bytes")
-    d.stat("Disk actually used by stopped VMs", "Longhorn actual (thin) size of those disks, one replica.",
+    d.stat("Stopped: actually used", "Longhorn actual (thin) size of those disks, one replica.",
            "sum(%s) or vector(0)" % STOPPED_ACTUAL, unit="bytes")
-    d.stat("VMs stopped over 30 days", "Stopped VMs whose last transition is more than 30 days ago.",
+    d.stat("Stopped > 30 days", "Stopped VMs whose last transition is more than 30 days ago.",
            "count((%s) > 30) or vector(0)" % DAYS_STOPPED, thr=OK_WARN_BAD(1, 5))
     d.table("Stopped VMs", "Days since the VM stopped (blank when Harvester has no timestamp), disk size "
             "provisioned and actually used. Candidates to delete, archive or export.",
@@ -811,7 +817,7 @@ def capacity():
             sort=("Disk used", True), vm_link=True, w=14, h=9)
 
     d.row("Storage efficiency (Longhorn)")
-    d.stat("Thin-provisioning: actual / provisioned", "Longhorn volumes' actual size over their capacity.",
+    d.stat("Thin usage", "Longhorn volumes' actual size over their capacity.",
            "100 * sum(longhorn_volume_actual_size_bytes) / sum(longhorn_volume_capacity_bytes)", unit="percent")
     d.stat("Volumes detached", "Longhorn volumes not attached to a workload right now (includes the disks of "
            "stopped VMs).", 'count(longhorn_volume_state{state="detached"} == 1) or vector(0)')
@@ -822,15 +828,14 @@ def capacity():
     d.table("PVCs used by neither a VM nor a pod (candidates)", "PVCs on Harvester storage classes, outside "
             "system namespaces, that no VM disk and no pod references. Review before deleting: a PVC can be "
             "bound for a purpose this dashboard cannot see.",
-            [("kube_persistentvolumeclaim_resource_requests_storage_bytes and on (namespace, persistentvolumeclaim)"
-              " (%s)" % ORPHAN_PVC, "Size", "bytes", None)],
+            [("max by (namespace, persistentvolumeclaim) (kube_persistentvolumeclaim_resource_requests_storage_bytes "
+              "and on (namespace, persistentvolumeclaim) (%s))" % ORPHAN_PVC, "Size", "bytes", None)],
             labels={"namespace": "Namespace", "persistentvolumeclaim": "PVC"}, sort=("Size", True), w=12, h=7)
     d.table("Largest detached Longhorn volumes", "Detached volumes by actual size (disks of stopped VMs "
             "included): where the space sits while nothing uses it.",
-            [("topk(15, longhorn_volume_actual_size_bytes and on (volume) (longhorn_volume_state{state=\"detached\"}"
-              " == 1))", "Actual size", "bytes", None),
-             ("longhorn_volume_capacity_bytes and on (volume) topk(15, longhorn_volume_actual_size_bytes "
-              "and on (volume) (longhorn_volume_state{state=\"detached\"} == 1))", "Capacity", "bytes", None)],
+            [("max by (pvc_namespace, pvc) (%s)" % DETACHED_TOP, "Actual size", "bytes", None),
+             ("max by (pvc_namespace, pvc) (longhorn_volume_capacity_bytes and on (volume) (%s))" % DETACHED_TOP,
+              "Capacity", "bytes", None)],
             labels={"pvc_namespace": "Namespace", "pvc": "PVC"}, sort=("Actual size", True), w=12, h=7)
     fs = '{namespace=~"$namespace"}'
     fs_used = "max by (namespace, name, mount_point) (kubevirt_vmi_filesystem_used_bytes%s)" % fs

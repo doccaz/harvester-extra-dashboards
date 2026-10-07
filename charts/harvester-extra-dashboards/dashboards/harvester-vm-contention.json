@@ -179,7 +179,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs with CPU Ready > 5%",
+      "title": "VMs: CPU Ready > 5%",
       "description": "VMs whose vCPUs spend more than 5% of the time runnable but not scheduled. vSphere guidance: >5% per vCPU is a warning, >10% is a problem.",
       "datasource": {
         "type": "prometheus",
@@ -309,7 +309,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs with guest memory > 90%",
+      "title": "VMs: guest mem > 90%",
       "description": "VMs whose guest OS reports less than 10% memory available (MemAvailable, so page cache is NOT counted as used). Needs qemu-guest-agent.",
       "datasource": {
         "type": "prometheus",
@@ -375,7 +375,7 @@
     {
       "type": "stat",
       "title": "OOM kills (1h)",
-      "description": "OOM kills on the nodes plus OOM events of virt-launcher compute containers in the last hour. A launcher OOM kill takes the VM down.",
+      "description": "Kernel OOM kills on the nodes (any process, including pods killed at their memory limit) plus OOM events of virt-launcher compute containers in the last hour. A launcher OOM kill takes the VM down.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -394,7 +394,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(node_vmstat_oom_kill[1h]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})) + (sum(increase(container_oom_events_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[1h])) or vector(0))",
+          "expr": "round(sum(increase(node_vmstat_oom_kill[1h]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})) + (sum(increase(container_oom_events_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[1h])) or vector(0)))",
           "legendFormat": "",
           "range": false,
           "instant": true
@@ -435,7 +435,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs with launcher memory > 90% of limit",
+      "title": "VMs near memory limit",
       "description": "VMs whose virt-launcher working set is above 90% of its memory limit: OOM-kill risk for the VM.",
       "datasource": {
         "type": "prometheus",
@@ -500,7 +500,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs CPU-throttled > 5%",
+      "title": "VMs throttled > 5%",
       "description": "VMs whose launcher hit its CPU limit in more than 5% of scheduling periods.",
       "datasource": {
         "type": "prometheus",

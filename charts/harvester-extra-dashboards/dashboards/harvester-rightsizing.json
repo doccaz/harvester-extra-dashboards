@@ -388,7 +388,7 @@
     },
     {
       "type": "stat",
-      "title": "VMs with reclaimable resources",
+      "title": "Oversized VMs",
       "description": "Running VMs whose p95 usage would fit in fewer vCPUs or less memory at the target utilisation.",
       "datasource": {
         "type": "prometheus",
@@ -912,7 +912,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "namespace": "Namespace",
@@ -1227,7 +1235,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "namespace": "Namespace",
@@ -1236,12 +1252,12 @@
               "Value #B": "CPU avg %",
               "Value #C": "CPU p95 %",
               "Value #D": "CPU peak %",
-              "Value #E": "Suggested vCPUs",
-              "Value #F": "vCPUs reclaimable",
-              "Value #G": "Memory",
-              "Value #H": "Memory p95 used",
-              "Value #I": "Suggested memory",
-              "Value #J": "Memory reclaimable"
+              "Value #E": "Sugg. vCPUs",
+              "Value #F": "vCPU saving",
+              "Value #G": "Mem",
+              "Value #H": "Mem p95",
+              "Value #I": "Sugg. mem",
+              "Value #J": "Mem saving"
             },
             "indexByName": {
               "Time": 0,
@@ -1251,12 +1267,12 @@
               "CPU avg %": 4,
               "CPU p95 %": 5,
               "CPU peak %": 6,
-              "Suggested vCPUs": 7,
-              "vCPUs reclaimable": 8,
-              "Memory": 9,
-              "Memory p95 used": 10,
-              "Suggested memory": 11,
-              "Memory reclaimable": 12
+              "Sugg. vCPUs": 7,
+              "vCPU saving": 8,
+              "Mem": 9,
+              "Mem p95": 10,
+              "Sugg. mem": 11,
+              "Mem saving": 12
             }
           }
         }
@@ -1317,33 +1333,6 @@
               {
                 "id": "decimals",
                 "value": 1
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "red",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 10
-                    },
-                    {
-                      "color": "green",
-                      "value": 30
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background",
-                  "mode": "basic"
-                }
               }
             ]
           },
@@ -1366,7 +1355,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Suggested vCPUs"
+              "options": "Sugg. vCPUs"
             },
             "properties": [
               {
@@ -1382,7 +1371,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "vCPUs reclaimable"
+              "options": "vCPU saving"
             },
             "properties": [
               {
@@ -1425,7 +1414,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory"
+              "options": "Mem"
             },
             "properties": [
               {
@@ -1441,7 +1430,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory p95 used"
+              "options": "Mem p95"
             },
             "properties": [
               {
@@ -1457,7 +1446,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Suggested memory"
+              "options": "Sugg. mem"
             },
             "properties": [
               {
@@ -1473,7 +1462,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory reclaimable"
+              "options": "Mem saving"
             },
             "properties": [
               {
@@ -1513,7 +1502,7 @@
         },
         "sortBy": [
           {
-            "displayName": "vCPUs reclaimable",
+            "displayName": "vCPU saving",
             "desc": true
           }
         ]
@@ -1535,7 +1524,7 @@
     {
       "type": "table",
       "title": "Under-sized VM candidates",
-      "description": "CPU p95 above the under-sized CPU threshold, or guest memory p95 above the memory threshold, over the window. Check CPU Ready on the contention dashboard before adding vCPUs.",
+      "description": "If a VM was resized inside the window its p95 reflects the old size too. CPU p95 above the under-sized CPU threshold, or guest memory p95 above the memory threshold, over the window. Check CPU Ready on the contention dashboard before adding vCPUs.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1613,7 +1602,15 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true
             },
             "renameByName": {
               "namespace": "Namespace",

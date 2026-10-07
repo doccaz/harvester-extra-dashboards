@@ -77,6 +77,8 @@ Both dashboards are for **decisions**, not alerts: they list candidates and a su
   dashboard before adding vCPUs.
 - **Memory** columns need qemu-guest-agent (they use available minus MemAvailable, so reclaimable page cache does not
   count as used). VMs without it show blanks, not zeros.
+- A VM **resized inside the window** is judged against its new size using usage measured at the old one (e.g. a VM
+  shrunk from 12 to 8 GiB can show memory p95 above 100%). Shorten the window or wait for history at the new size.
 - **Running** means a current VMI exists, so VMs that were stopped inside the window do not distort the totals.
 - **Stopped VMs** come from `kubevirt_vm_info{status_group="non_running"}`. The "last transition" timestamp metric
   exists for every VM (0 for running or unknown), so it is only used for the days-stopped column.
@@ -199,7 +201,7 @@ I/O "some" 38.7% / "full" 31.9%, memory 0); the per-VM panels stay at 0 until th
 3. Guest-agent metrics exist only for VMs running qemu-guest-agent (10 VMIs report `usable` here).
 4. Right-sizing and capacity dashboards: every query was run against the lab Prometheus (the tables' merged
    columns were checked row by row, including with loosened thresholds), but the Grafana rendering of the tables
-   (column order, cell colours, sorting, VM links) has not been looked at yet.
+   (column order, cell colours, sorting, VM links) was checked in Grafana on 2026-10-07 and fixed (stray label columns, truncated titles); re-check after upgrading.
 5. Their conclusions rest on 5 days of data; see "Right-sizing and capacity: how to read them".
 
 ## Releasing
