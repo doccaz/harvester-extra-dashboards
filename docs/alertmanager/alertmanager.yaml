@@ -35,6 +35,8 @@ receivers:
     smarthost: mailpit.cattle-monitoring-system.svc:1025
     require_tls: false                      # plain SMTP to the in-cluster catcher; remove for a real relay
     send_resolved: true
+    auth_username: alertmanager             # the in-cluster catcher requires a login
+    auth_password: CHANGE_ME                # the password in Secret mailpit-smtp (see README.md); never commit it
     # For a real relay, replace smarthost/require_tls and add credentials from a mounted Secret, never inline:
     #   smarthost: smtp.example.com:587
     #   auth_username: alertmanager@example.com

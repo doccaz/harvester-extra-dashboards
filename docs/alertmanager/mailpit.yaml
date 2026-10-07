@@ -1,6 +1,7 @@
 # Throwaway in-cluster mail catcher to prove the Alertmanager route and receiver work, before any real SMTP
-# relay is involved. Nothing is delivered outside the cluster: Mailpit accepts any message on port 1025 and shows
-# it in a web UI on 8025. Delete it when done:  kubectl delete -f mailpit.yaml
+# relay is involved. Nothing is delivered outside the cluster: Mailpit accepts messages on port 1025 and shows
+# it in a web UI on 8025, but only from a client that logs in with the credential in Secret mailpit-smtp
+# (create it first, see README.md). Delete it when done:  kubectl delete -f mailpit.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,8 +25,11 @@ spec:
         - name: mailpit
           image: docker.io/axllent/mailpit:v1.31.4
           env:
-            - name: MP_SMTP_AUTH_ACCEPT_ANY       # no login needed; this is a sink, not a relay
-              value: "1"
+            - name: MP_SMTP_AUTH                  # "user:password", read from the Secret mailpit-smtp
+              valueFrom:
+                secretKeyRef:
+                  name: mailpit-smtp
+                  key: smtp-auth
             - name: MP_SMTP_AUTH_ALLOW_INSECURE   # plain SMTP inside the cluster
               value: "1"
             - name: MP_DATABASE
