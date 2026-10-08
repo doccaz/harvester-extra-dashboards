@@ -1,8 +1,8 @@
 apiVersion: v2
 name: harvester-extra-dashboards
-description: Extra Grafana dashboards for Harvester / SUSE Virtualization (VM contention, VM detail) for the built-in rancher-monitoring stack.
+description: Community dashboards and alerts for Harvester / SUSE Virtualization on the built-in rancher-monitoring stack (VM contention, detail, right-sizing, capacity, scorecard, backup). Not an official SUSE product; for exploration only.
 type: application
-version: 0.4.6
+version: 0.4.7
 # Harvester release the dashboards were verified against (KubeVirt 1.7.x metric names).
 appVersion: "1.8.2"
 home: https://github.com/doccaz/harvester-extra-dashboards

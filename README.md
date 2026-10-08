@@ -1,5 +1,13 @@
 # harvester-extra-dashboards
 
+> **Disclaimer.** This is an independent, community project. It is **not** an official SUSE product, is not
+> supported or endorsed by SUSE or the Harvester project, and "SUSE", "Harvester" and "Rancher" are trademarks of their
+> owners. The dashboards, alerts and documentation are provided **as is, for exploration and evaluation only**: they
+> were tested on one small lab (Harvester v1.8.2) and are not production-ready, not a monitoring or capacity-planning
+> product, and not a substitute for vendor guidance. Thresholds, right-sizing suggestions and forecasts are indicative.
+> Review everything (and the cluster changes described in `docs/`) before using it anywhere that matters; you use it at
+> your own risk, under the terms of the [LICENSE](LICENSE).
+
 Extra Grafana dashboards and alerts for Harvester (SUSE Virtualization): VM contention, right-sizing, capacity/reclaim with a what-if, a VM scorecard, backup and snapshot protection, and 24 opt-in alert rules, packaged as a Helm chart.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that

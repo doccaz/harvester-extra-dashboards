@@ -1,3 +1,5 @@
+NOTE: community project, not an official SUSE product; for exploration and evaluation only, provided as is.
+
 Dashboard ConfigMaps were created in namespace "{{ .Values.dashboardsNamespace }}" with the label
 {{ .Values.sidecar.label }}="{{ .Values.sidecar.labelValue }}".
 

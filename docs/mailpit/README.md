@@ -1,5 +1,8 @@
 # Mailpit for the Harvester lab
 
+> **Not an official SUSE product; for exploration and evaluation only, provided as is.** See the
+> [disclaimer](../../README.md).
+
 [Mailpit](https://github.com/axllent/mailpit) is a mail sink with a web UI. In the lab it receives the alert emails that
 Alertmanager sends, so you can read them in a browser **without any real SMTP relay**: nothing is delivered outside the
 cluster. It is how the `Harvester*` alerts of this repo are made visible (see

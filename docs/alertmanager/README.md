@@ -1,5 +1,8 @@
 # Emailing the Harvester alerts (Alertmanager side)
 
+> **Not an official SUSE product; for exploration and evaluation only, provided as is.** See the
+> [disclaimer](../../README.md).
+
 The `alerts.enabled` chart option creates the alert rules, but a default Harvester `rancher-monitoring` Alertmanager has
 **one receiver, `"null"`, that discards everything**, so nobody is told. This folder holds a tested Alertmanager config
 that emails only the `Harvester*` alerts of this chart. The mail destination used in the lab is an in-cluster mail sink,

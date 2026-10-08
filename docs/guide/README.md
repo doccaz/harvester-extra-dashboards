@@ -1,5 +1,8 @@
 # User guide
 
+> **Not an official SUSE product; for exploration and evaluation only, provided as is.** See the
+> [disclaimer](../../README.md).
+
 How to read the `[SV+]` dashboards and alerts. The guide is separate from the Helm chart (nothing here is
 installed or shipped by it). The panels shown are real, from a three-node Harvester 1.8.2 lab; VM, volume and
 namespace names in the screenshots are replaced by aliases. What those numbers meant on that lab is in
