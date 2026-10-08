@@ -119,8 +119,8 @@ Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver
 
 Each expression was parsed, then evaluated against the lab Prometheus: all 24 run without error, and with the
 thresholds forced to 0 every rule that has data returns series (the event rules, such as OOM kills and degraded
-volumes, were checked by confirming their selectors exist). On the lab only **`HarvesterMemoryN1Exceeded`** fires
-today (145%). Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
+volumes, were checked by confirming their selectors exist). At the last check on the lab (2026-10-07) four alerts were firing: **`HarvesterMemoryN1Exceeded`** (152%), a launcher near its
+memory limit, and `HarvesterBackupStale` for two volumes; the others evaluate without firing. Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
 `unknown`, so only `degraded` and `faulted` alert.
 
 ## Storage contention (VM Contention dashboard)
@@ -182,8 +182,9 @@ user-created snapshots hold 1.3 TiB, about 40% of the used Longhorn disk.
 
 ## Live check (lab, Harvester v1.8.2, 2026-10-06 and 2026-10-07)
 
-`verify-metrics.py` plus every panel and alert query executed against the lab Prometheus: all 87 default panels (97 in
-the PSI variant) and all 21 alert expressions run without query errors, and all 65 metrics they use exist. The dashboards
+`verify-metrics.py` plus every panel and alert query executed against the lab Prometheus: all 110 default panels (120 in
+the PSI variant) and all 24 alert expressions run without query errors (`verify-queries.py`: 221 queries, 0 errors, graphs run as
+6 h ranges), and all 65 metrics they use exist (`verify-metrics.py`: 0 absent). The dashboards
 were then opened in Grafana (through the Harvester API proxy) and the problems that only show there were fixed.
 
 - `kubevirt_vmi_vcpu_delay_seconds_total` is emitted, so CPU Ready works. Guest-agent memory, launcher limits, CFS and
@@ -198,8 +199,8 @@ were then opened in Grafana (through the Harvester API proxy) and the problems t
 - Longhorn latency metrics are in **nanoseconds**; `longhorn_volume_state` and `longhorn_volume_robustness` are one
   series per state (label `state`, value 0/1) and detached volumes report robustness `unknown`.
 - What the lab showed: CPU Ready peaked near 17% while VMs were bunched on fewer hosts during node reboots, the busiest
-  disk of one node sat at 100% for stretches (await up to ~250 ms), memory requests are 145% of what would remain after
-  losing the biggest host, 40 of 50 Longhorn volumes have never been backed up, and `harv01lab` had 20 kernel OOM kills.
+  disk of one node sat at 100% for stretches (await up to ~250 ms), memory requests are 145-152% of what would remain after
+  losing the biggest host, most Longhorn volumes have never been backed up (18 of 24 VMs have at least one), and `harv01lab` had 20 kernel OOM kills.
 - PSI is now enabled on all three lab nodes (next section) and its panels show data.
 
 ## Pressure (PSI) panels: kernel prerequisite
@@ -279,13 +280,21 @@ the per-VM and host pressure panels show real values, and the three host pressur
 2. Right-sizing conclusions rest on 5 days of Prometheus data and on qemu-guest-agent for memory; see "Right-sizing and
    capacity: how to read them".
 3. Alertmanager: the default config notifies nobody. `docs/alertmanager/` is applied on the lab (mail catcher, behind
-   its own login and a Cloudflare-tunnelled Ingress), but the Alertmanager config Secret may be reset by an add-on
-   redeploy (untested), and the catcher page is protected by a password only (a Cloudflare Access policy is advisable).
+   its own login and a Cloudflare-tunnelled Ingress). The route survived one add-on redeploy (changing the two
+   `externalUrl` values, which the mail links need: see that README), but an add-on upgrade or an `alertmanager.config`
+   change may still reset the Secret, so re-check it after any add-on change. The catcher page is protected by a
+   password only (a Cloudflare Access policy is advisable).
 4. Gaps against VMware's tools that are not built: showback by namespace, a DRS-like balance and migration view,
    longer metric retention (an add-on change), and a cost model for "reclaimable". An earlier version of this file
    said Harvester exports no snapshot metrics; that was wrong, Longhorn does and the Backup & Protection dashboard uses them.
 5. The what-if is only as good as its inputs: the memory-overcommit variable has to be set by hand to match your
    `overcommit-config`, and the CPU estimate assumes new VMs behave like today's average.
+
+6. Capacity & Reclaim is the heaviest dashboard: with the 3-day window it needed about a minute to load fully on the lab
+   (many range queries over 3 days) and a browser tab froze more than once while it rendered. Fine for occasional use;
+   if it becomes a daily page, move its heaviest expressions into Prometheus recording rules.
+7. The guide's screenshots (`docs/guide/images/`) are of one moment on one lab and have names replaced by aliases; they will
+   drift from the dashboards as panels change. Regenerate them when a dashboard changes visibly.
 
 ## Releasing
 
