@@ -66,8 +66,12 @@ The three PSI alerts stay silent until the nodes boot with `psi=1`.
 ## What an alert email looks like
 
 With the example Alertmanager route and the Mailpit sink from [../alertmanager](../alertmanager/README.md) and
-[../mailpit](../mailpit/README.md), each alert arrives as one mail per alert group. This is a real one from the
-lab (names generic):
+[../mailpit](../mailpit/README.md), each alert arrives as one mail per alert group. A launcher-memory alert as it appears in the
+Mailpit reader (VM and namespace names replaced):
+
+![Alert mail: HarvesterVMLauncherMemoryNearLimit](images/alert-email.png)
+
+And the text of another one from the lab (names generic), a cluster-wide alert with no VM label:
 
 ```
 From:     alertmanager@harvester.lab
