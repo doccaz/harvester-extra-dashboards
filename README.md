@@ -303,8 +303,12 @@ the per-VM and host pressure panels show real values, and the three host pressur
      vCPU, IOPS, latency) disappeared for all 12 VMs on that node for about 30 minutes, while cAdvisor series (launcher
      memory, PSI) and the other node were unaffected. virt-handler logged `Collection timeout` every minute and
      `failed to scrape metrics` for the launcher socket of one pre-existing VM (`smlm-prod`) from the same second the
-     phase began. One stuck launcher blanks the VM panels of its whole node. Whether the load test triggered it is
-     unproven; it cleared about a minute after the test VM was deleted and `smlm-prod` stayed without metrics.
+     phase began. One stuck launcher blanks the VM panels of its whole node. The `smlm-prod` console showed guest
+     kernel soft lockups (CPU#1 stuck 21-22 s, RCU stalls) at about 03:33 and 03:55 UTC, inside that window (computed
+     from the guest uptime shown), so its vCPUs were stalling. The host had no memory pressure at the time (about 30 GiB
+     available, no swap, memory PSI under 3%) but node IO pressure was already 10-20% before the test started, so the
+     test is an unlikely root cause (storage stalls are the better suspect), though not excluded. The blackout cleared
+     about a minute after the test VM was deleted.
      In such a case the launcher memory and PSI panels still work. Not yet built: an alert for running VMs without
      `kubevirt_vmi_vcpu_seconds_total` (`kubevirt_vmi_info{phase="running"} unless on (namespace, name)
      kubevirt_vmi_vcpu_seconds_total{id="0"}` returned exactly `smlm-prod`).
