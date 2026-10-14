@@ -291,8 +291,25 @@ the per-VM and host pressure panels show real values, and the three host pressur
 
 ## Open items
 
-1. Load test one VM (CPU and memory stress) to see CPU Ready, PSI and guest memory react under a real incident; the lab
-   has only been idle or rebooting, so no alert threshold has been tuned against a genuine problem.
+1. Load test (2026-10-14, throwaway VM, 2 vCPU / 2 GiB, deleted afterwards). Findings, with what is still untested:
+   - **CPU burn** (2 workers, 10 min, hosts at 33-53% CPU): VM CPU 100%, CPU Ready 5-6%, cgroup throttling 99%, PSI
+     CPU-waiting about 2%. `HarvesterVMCPUReadyHigh` (> 5% for 15 min) went pending but never fired: the observed ceiling
+     sits right at the threshold, and a burst shorter than the `for` window is not caught. CPU Ready was not driven
+     high (that needs host contention, which was not forced on a shared lab).
+   - **Memory fill** (1.2 GiB, then 1.8 GiB of 2 GiB): guest memory went from 17% to 100% with about 120 major
+     faults/s, no swap. The launcher working set ratcheted 42% -> 83% -> 90% and **stayed at 90% after the guest freed
+     the memory**: `HarvesterVMLauncherMemoryNearLimit` measures a high-water mark until the VM restarts, not current use.
+   - **Metric blackout (new finding).** From the start of the memory phase every `kubevirt_vmi_*` series (guest memory,
+     vCPU, IOPS, latency) disappeared for all 12 VMs on that node for about 30 minutes, while cAdvisor series (launcher
+     memory, PSI) and the other node were unaffected. virt-handler logged `Collection timeout` every minute and
+     `failed to scrape metrics` for the launcher socket of one pre-existing VM (`smlm-prod`) from the same second the
+     phase began. One stuck launcher blanks the VM panels of its whole node. Whether the load test triggered it is
+     unproven; it cleared about a minute after the test VM was deleted and `smlm-prod` stayed without metrics.
+     In such a case the launcher memory and PSI panels still work. Not yet built: an alert for running VMs without
+     `kubevirt_vmi_vcpu_seconds_total` (`kubevirt_vmi_info{phase="running"} unless on (namespace, name)
+     kubevirt_vmi_vcpu_seconds_total{id="0"}` returned exactly `smlm-prod`).
+   - Disk IO phase: not measured (the same blackout hid the VM-level IOPS and latency); only node and Longhorn series
+     were available.
 2. Right-sizing conclusions rest on 5 days of Prometheus data and on qemu-guest-agent for memory; see "Right-sizing and
    capacity: how to read them".
 3. Alertmanager: the default config notifies nobody. `docs/alertmanager/` is applied on the lab (mail catcher, behind
