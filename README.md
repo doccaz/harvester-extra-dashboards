@@ -303,12 +303,17 @@ the per-VM and host pressure panels show real values, and the three host pressur
 4. Gaps against VMware's tools that are not built: showback by namespace, a DRS-like balance and migration view,
    longer metric retention (an add-on change), and a cost model for "reclaimable". An earlier version of this file
    said Harvester exports no snapshot metrics; that was wrong, Longhorn does and the Backup & Protection dashboard uses them.
-5. The what-if is only as good as its inputs: the memory-overcommit variable has to be set by hand to match your
-   `overcommit-config`, and the CPU estimate assumes new VMs behave like today's average.
+5. The what-if is only as good as its inputs: the memory-overcommit variable (`wi_overcommit`, default 1.75) is set by hand
+   because Harvester's `overcommit-config` is a Setting object, not a metric. It cannot be derived reliably from the
+   data: on the lab (setting `{"cpu":1600,"memory":175,"storage":200}`, so 1.75 is right) the per-VM ratio of launcher
+   memory request to VM memory ranges from 0.6 to 2.3 because several VMs carry explicit requests, so a derived value
+   would be wrong. Read it with `kubectl get settings.harvesterhci.io overcommit-config -o jsonpath='{.value}'`
+   (memory 175 means 1.75). The CPU estimate assumes new VMs behave like today's average.
 
-6. Capacity & Reclaim is the heaviest dashboard: with the 3-day window it needed about a minute to load fully on the lab
-   (many range queries over 3 days) and a browser tab froze more than once while it rendered. Fine for occasional use;
-   if it becomes a daily page, move its heaviest expressions into Prometheus recording rules.
+6. Capacity & Reclaim feels heavy to load, but measured on the lab (2026-10-13) Prometheus is not the cause: its 41
+   queries took 4.2 s in total at a 5-minute step over the 3-day window (slowest 0.4 s: the CPU fit tiles), so recording
+   rules would not help. The slowness is in the browser or Grafana rendering of its 36 panels (20 tiles, 5 graphs,
+   5 merged tables) and the 1-minute auto-refresh, not in query time.
 7. The guide's screenshots (`docs/guide/images/`) are of one moment on one lab and have names replaced by aliases; they will
    drift from the dashboards as panels change. Regenerate them when a dashboard changes visibly.
 
