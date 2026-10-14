@@ -29,6 +29,14 @@ Target: **Harvester v1.8.2** (KubeVirt 1.7.4, chart `rancher-monitoring` 108.0.2
 
 ## Install
 
+> **Note on the Rancher monitoring changes (checked 2026-10-13).** Rancher v2.15 stops offering the legacy
+> `rancher-monitoring` chart for new installs in favour of `rancher-monitoring-dashboards` plus an external
+> `kube-prometheus-stack`. That is Rancher's own install flow and does not change the Harvester add-on this chart
+> targets. The chart depends only on conventions a replacement stack would also use: ConfigMaps labelled
+> `grafana_dashboard=1` and, with `alerts.enabled`, a PrometheusRule. If a future Harvester release swaps the add-on,
+> check `dashboardsNamespace`, `sidecar.label` and `alerts.labels.release` (default `rancher-monitoring`; a rule whose
+> `release` label does not match the Prometheus `ruleSelector` is silently ignored), then run `verify-queries.py`.
+
 Needs the Harvester `rancher-monitoring` add-on enabled (Grafana's sidecar loads ConfigMaps labelled
 `grafana_dashboard=1` from `cattle-dashboards`). The chart only creates those ConfigMaps (and, if you opt in with `alerts.enabled`, one PrometheusRule): no hooks, RBAC or images.
 
