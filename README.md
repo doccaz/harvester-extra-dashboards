@@ -310,10 +310,13 @@ the per-VM and host pressure panels show real values, and the three host pressur
    would be wrong. Read it with `kubectl get settings.harvesterhci.io overcommit-config -o jsonpath='{.value}'`
    (memory 175 means 1.75). The CPU estimate assumes new VMs behave like today's average.
 
-6. Capacity & Reclaim feels heavy to load, but measured on the lab (2026-10-13) Prometheus is not the cause: its 41
-   queries took 4.2 s in total at a 5-minute step over the 3-day window (slowest 0.4 s: the CPU fit tiles), so recording
-   rules would not help. The slowness is in the browser or Grafana rendering of its 36 panels (20 tiles, 5 graphs,
-   5 merged tables) and the 1-minute auto-refresh, not in query time.
+6. Capacity & Reclaim was reported as slow to load, but could not be reproduced on 2026-10-13/14. Prometheus answered
+   its 41 queries in 4.2 s in total at a 5-minute step over the 3-day window (slowest 0.4 s: the CPU fit tiles). In
+   Chrome via Grafana, scrolling the whole page ran 30 data-source requests (the rest are collapsed or off-screen
+   panels, loaded lazily) with the slowest at 2.0 s, no main-thread task over 50 ms, 2,163 DOM nodes and an 86 MB JS
+   heap. Caveat: the measuring tab was reported as hidden by the browser, so rendering was throttled and this does not
+   rule out a slow draw on a visible, older machine. Recording rules would not help; if it happens again, lengthen or
+   turn off the 1-minute auto-refresh first.
 7. The guide's screenshots (`docs/guide/images/`) are of one moment on one lab and have names replaced by aliases; they will
    drift from the dashboards as panels change. Regenerate them when a dashboard changes visibly.
 
