@@ -1045,6 +1045,8 @@ def alert_rules():
                  "kubevirt_vmi_network_transmit_packets_dropped_total", "")
     psi = lambda r: "100 * rate(node_pressure_%s_waiting_seconds_total[5m]) %s" % (r, NODE_NAME)
     n1 = "100 * sum(%s) / (sum(%s) - max(%s))" % (hosts(REQ_MEM), hosts(ALLOC_MEM), hosts(ALLOC_MEM))
+    missing = ('max by (namespace, name, node) (kubevirt_vmi_info{phase="running"}) unless on (namespace, name) '
+               'max by (namespace, name) (kubevirt_vmi_vcpu_seconds_total{id="0"})')
     lh_usable = "(longhorn_node_storage_capacity_bytes - longhorn_node_storage_reservation_bytes)"
 
     def rule(name, expr, for_, sev, summary, desc):
@@ -1084,6 +1086,12 @@ def alert_rules():
             rule("HarvesterVMNetworkDrops", "(%s) > __NET_DROPS__" % drops, "10m", "warning",
                  vm + " is dropping packets",
                  vm + " drops {{ $value | printf \"%.1f\" }} packets/s on its vNICs."),
+            rule("HarvesterVMMetricsMissing", missing, "10m", "warning",
+                 vm + " is running but reports no metrics",
+                 vm + " is running (kubevirt_vmi_info) but has no kubevirt_vmi_vcpu_seconds_total series for 10 "
+                      "minutes, so every VM panel and VM alert for it is blind. Usually its virt-launcher or guest is "
+                      "stalled (check the console for soft lockups and the Longhorn volume); several VMs on one node at "
+                      "once means virt-handler's collector is timing out on one of them."),
         ]},
         {"name": "harvester-extra.host-contention", "rules": [
             rule("HarvesterNodeOOMKills",

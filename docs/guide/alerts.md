@@ -1,6 +1,6 @@
 # Alerts
 
-The chart can install a `PrometheusRule` with 24 alerts in four groups (`alerts.enabled=true`; off by default,
+The chart can install a `PrometheusRule` with 25 alerts in four groups (`alerts.enabled=true`; off by default,
 because it starts firing into whatever Alertmanager routes you have). Thresholds are chart values (`alerts.thresholds.*`,
 defaults below); the rules themselves live in `charts/harvester-extra-dashboards/alerts/harvester-extra-alerts.json`.
 Every alert name starts with `Harvester`, which is what the example Alertmanager route in
@@ -29,6 +29,7 @@ incident routine in the [overview](README.md).
 | HarvesterVMDiskLatencyHigh | warning | VM disk write latency above 50 ms for 10 m | Contention storage row |
 | HarvesterVMLonghornLatencyHigh | warning | Longhorn latency of the VM's volume above 50 ms for 10 m | storage layer: replicas, node disks, network |
 | HarvesterVMNetworkDrops | warning | vNIC drops above 10/s for 10 m | Detail v2 network row |
+| HarvesterVMMetricsMissing | warning | a running VM has no `kubevirt_vmi_*` metrics for 10 m | its console (guest soft lockups), the Longhorn volume; several VMs on one node means virt-handler's collector is timing out on one of them |
 
 ### Host contention (`harvester-extra.host-contention`)
 

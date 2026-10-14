@@ -8,7 +8,7 @@
 > Review everything (and the cluster changes described in `docs/`) before using it anywhere that matters; you use it at
 > your own risk, under the terms of the [LICENSE](LICENSE).
 
-Extra Grafana dashboards and alerts for Harvester (SUSE Virtualization): VM contention, right-sizing, capacity/reclaim with a what-if, a VM scorecard, backup and snapshot protection, and 24 opt-in alert rules, packaged as a Helm chart.
+Extra Grafana dashboards and alerts for Harvester (SUSE Virtualization): VM contention, right-sizing, capacity/reclaim with a what-if, a VM scorecard, backup and snapshot protection, and 25 opt-in alert rules, packaged as a Helm chart.
 
 Grafana dashboards for the Harvester (SUSE Virtualization) built-in `rancher-monitoring` stack that
 close part of the gap to what VMware shows operators: CPU Ready, honest memory consumption, launcher OOM
@@ -56,7 +56,7 @@ Grafana loads them within about a minute: look for the `[SV+]` dashboards, or fi
 |---|---|---|
 | `psi.enabled` | `false` | Install the variant with the pressure (PSI) panels; needs kernel PSI, see below |
 | `dashboards.contention.enabled`, `.detail.enabled`, `.rightsizing.enabled`, `.capacity.enabled`, `.scorecard.enabled`, `.backup.enabled` | `true` | Install each dashboard |
-| `alerts.enabled` | `false` | Install the PrometheusRule with 24 alerts (see "Alerts") |
+| `alerts.enabled` | `false` | Install the PrometheusRule with 25 alerts (see "Alerts") |
 | `alerts.thresholds.*`, `alerts.namespace`, `alerts.labels` | see `values.yaml` | Alert thresholds, rule namespace, rule labels |
 | `dashboardsNamespace` | `cattle-dashboards` | Namespace Grafana's sidecar watches |
 | `sidecar.label` / `sidecar.labelValue` | `grafana_dashboard` / `"1"` | Sidecar selector |
@@ -119,7 +119,7 @@ Both dashboards are for **decisions**, not alerts: they list candidates and a su
 
 ## Alerts
 
-`alerts.enabled=true` installs one `PrometheusRule` (`<release>-alerts`) with 24 rules in four groups. It is **off by
+`alerts.enabled=true` installs one `PrometheusRule` (`<release>-alerts`) with 25 rules in four groups. It is **off by
 default** because it starts firing in Alertmanager, whose routes decide who is notified (the Harvester Prometheus
 selects rules from every namespace, so no extra wiring is needed to see them in the Prometheus and Alertmanager UIs).
 Thresholds are values (`alerts.thresholds.*`); the rule text is never templated, so `{{ $labels.name }}` reaches
@@ -128,12 +128,12 @@ Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver
 
 | Group | Alerts |
 |---|---|
-| `harvester-extra.vm-contention` | CPU Ready high (warning 5%, critical 10%), guest memory high, launcher memory near its limit, launcher OOM-killed, VM disk write latency, Longhorn write latency of a VM's volumes, VM network drops |
+| `harvester-extra.vm-contention` | CPU Ready high (warning 5%, critical 10%), guest memory high, launcher memory near its limit, launcher OOM-killed, VM disk write latency, Longhorn write latency of a VM's volumes, VM network drops, a running VM that reports no metrics |
 | `harvester-extra.host-contention` | node OOM kills, host memory / CPU / I/O pressure (PSI, silent until `psi=1`), node disk latency, node disk saturated |
 | `harvester-extra.capacity-and-storage` | cluster cannot lose its biggest host (N-1 memory), node memory requests high, Longhorn scheduling high / full, Longhorn node disks filling, Longhorn volume degraded / faulted |
 | `harvester-extra.backups-and-snapshots` | a backed-up volume whose last backup is older than `backupMaxAgeDays` (default 7), a Longhorn backup in state Error, snapshots holding more than `snapshotSpacePercent` (default 50) of the used Longhorn disk. Volumes that were *never* backed up are deliberately not alerted on (the lab has 40 of 50): see the dashboard |
 
-Each expression was parsed, then evaluated against the lab Prometheus: all 24 run without error, and with the
+Each expression was parsed, then evaluated against the lab Prometheus: all 25 run without error, and with the
 thresholds forced to 0 every rule that has data returns series (the event rules, such as OOM kills and degraded
 volumes, were checked by confirming their selectors exist). At the last check on the lab (2026-10-07) four alerts were firing: **`HarvesterMemoryN1Exceeded`** (152%), a launcher near its
 memory limit, and `HarvesterBackupStale` for two volumes; the others evaluate without firing. Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
@@ -199,7 +199,7 @@ user-created snapshots hold 1.3 TiB, about 40% of the used Longhorn disk.
 ## Live check (lab, Harvester v1.8.2, 2026-10-06 and 2026-10-07)
 
 `verify-metrics.py` plus every panel and alert query executed against the lab Prometheus: all 110 default panels (120 in
-the PSI variant) and all 24 alert expressions run without query errors (`verify-queries.py`: 221 queries, 0 errors, graphs run as
+the PSI variant) and all 25 alert expressions run without query errors (`verify-queries.py`: 221 queries, 0 errors, graphs run as
 6 h ranges), and all 65 metrics they use exist (`verify-metrics.py`: 0 absent). The dashboards
 were then opened in Grafana (through the Harvester API proxy) and the problems that only show there were fixed.
 

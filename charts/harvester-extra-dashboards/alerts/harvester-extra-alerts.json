@@ -98,6 +98,18 @@
             "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is dropping packets",
             "description": "VM {{ $labels.namespace }}/{{ $labels.name }} drops {{ $value | printf \"%.1f\" }} packets/s on its vNICs."
           }
+        },
+        {
+          "alert": "HarvesterVMMetricsMissing",
+          "expr": "max by (namespace, name, node) (kubevirt_vmi_info{phase=\"running\"}) unless on (namespace, name) max by (namespace, name) (kubevirt_vmi_vcpu_seconds_total{id=\"0\"})",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is running but reports no metrics",
+            "description": "VM {{ $labels.namespace }}/{{ $labels.name }} is running (kubevirt_vmi_info) but has no kubevirt_vmi_vcpu_seconds_total series for 10 minutes, so every VM panel and VM alert for it is blind. Usually its virt-launcher or guest is stalled (check the console for soft lockups and the Longhorn volume); several VMs on one node at once means virt-handler's collector is timing out on one of them."
+          }
         }
       ]
     },
