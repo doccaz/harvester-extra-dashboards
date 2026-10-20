@@ -139,7 +139,7 @@ Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver
 Each expression was parsed, then evaluated against the lab Prometheus: all 25 ran without error (re-checked 2026-10-20), and with the
 thresholds forced to 0 every rule that has data returns series (the event rules, such as OOM kills and degraded
 volumes, were checked by confirming their selectors exist). At the last check on the lab (2026-10-20) these were firing: **`HarvesterMemoryN1Exceeded`**, `HarvesterBackupStale` for four
-volumes and `HarvesterNodeDiskLatencyHigh`; the others evaluate without firing (on 2026-10-07 it was N1 at 152%, a launcher near
+volumes and `HarvesterNodeDiskLatencyHigh` (the witness's slow HDD; since chart 0.4.12 the witness is excluded from that alert); the others evaluate without firing (on 2026-10-07 it was N1 at 152%, a launcher near
 its memory limit and two stale backups). Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
 `unknown`, so only `degraded` and `faulted` alert.
 

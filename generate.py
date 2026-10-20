@@ -1118,9 +1118,14 @@ def alert_rules():
             rule("HarvesterHostIOPressure", "(%s) > __HOST_IO_PSI__" % psi("io"), "15m", "warning",
                  node + " is waiting on disk I/O",
                  "Tasks on " + node + " waited for block I/O {{ $value | printf \"%.1f\" }}% of the time (PSI)."),
-            rule("HarvesterNodeDiskLatencyHigh", "(%s) > __DISK_AWAIT_MS__" % disk_await(NODE_NAME), "15m", "warning",
+            # Witness nodes run no VMs and are often built on a single slow disk, so they are left out of this one
+            # (the series are keyed by nodename, the witness label by node).
+            rule("HarvesterNodeDiskLatencyHigh",
+                 '((%s) > __DISK_AWAIT_MS__) unless on (nodename) label_replace(%s, "nodename", "$1", "node", "(.*)")'
+                 % (disk_await(NODE_NAME), WITNESS), "15m", "warning",
                  node + " disks are slow",
-                 "Worst physical disk of " + node + " averages {{ $value | printf \"%.0f\" }} ms per I/O."),
+                 "Worst physical disk of " + node + " averages {{ $value | printf \"%.0f\" }} ms per I/O. Witness "
+                 "nodes are not checked."),
             rule("HarvesterNodeDiskBusy", "(%s) > __DISK_UTIL__" % disk_util(NODE_NAME), "30m", "warning",
                  node + " has a saturated disk",
                  "A physical disk of " + node + " has been busy {{ $value | printf \"%.0f\" }}% of the time."),

@@ -39,7 +39,7 @@ incident routine in the [overview](README.md).
 | HarvesterHostMemoryPressure | warning | memory PSI above 10% for 10 m (needs `psi=1`) | Contention memory row |
 | HarvesterHostCPUPressure | warning | CPU PSI above 30% for 15 m (needs `psi=1`) | Contention CPU row |
 | HarvesterHostIOPressure | warning | I/O PSI above 40% for 15 m (needs `psi=1`) | Contention storage row |
-| HarvesterNodeDiskLatencyHigh | warning | physical disk await above 50 ms for 15 m | the node's disks (SMART, `dmesg`) |
+| HarvesterNodeDiskLatencyHigh | warning | physical disk await above 50 ms for 15 m, on nodes that can run VMs (witness nodes are skipped: they run no VMs and often have one slow disk) | the node's disks (SMART, `dmesg`) |
 | HarvesterNodeDiskBusy | warning | busiest disk above 95% utilisation for 30 m | the disk is the bottleneck |
 
 The three PSI alerts stay silent until the nodes boot with `psi=1`.
