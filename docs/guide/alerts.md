@@ -114,4 +114,6 @@ kubectl -n cattle-monitoring-system get prometheusrule harvester-extra-dashboard
 ```
 
 and, in Prometheus (Status > Rules), the four `harvester-extra.*` groups with health `ok`. To change a threshold,
-`helm upgrade ... --reuse-values --set alerts.thresholds.cpuReadyWarn=8`.
+`helm upgrade ... --reset-then-reuse-values --set alerts.thresholds.cpuReadyWarn=8`. Use `--reset-then-reuse-values`,
+not `--reuse-values`: the latter keeps the old release's stored values, so a threshold added by a newer chart version
+(such as `launcherGuestMemoryPercent` in 0.4.11) renders empty and Prometheus rejects the rule ("Rules are not valid").
