@@ -133,7 +133,7 @@ Prometheus intact. **A default Harvester Alertmanager has only a `null` receiver
 | `harvester-extra.capacity-and-storage` | cluster cannot lose its biggest host (N-1 memory), node memory requests high, Longhorn scheduling high / full, Longhorn node disks filling, Longhorn volume degraded / faulted |
 | `harvester-extra.backups-and-snapshots` | a backed-up volume whose last backup is older than `backupMaxAgeDays` (default 7), a Longhorn backup in state Error, snapshots holding more than `snapshotSpacePercent` (default 50) of the used Longhorn disk. Volumes that were *never* backed up are deliberately not alerted on (the lab has 40 of 50): see the dashboard |
 
-Each expression was parsed, then evaluated against the lab Prometheus: all 25 run without error, and with the
+Each expression was parsed, then evaluated against the lab Prometheus: the first 24 ran without error (the 25th, `HarvesterVMMetricsMissing`, was added later and is not yet checked live), and with the
 thresholds forced to 0 every rule that has data returns series (the event rules, such as OOM kills and degraded
 volumes, were checked by confirming their selectors exist). At the last check on the lab (2026-10-07) four alerts were firing: **`HarvesterMemoryN1Exceeded`** (152%), a launcher near its
 memory limit, and `HarvesterBackupStale` for two volumes; the others evaluate without firing. Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
@@ -199,7 +199,7 @@ user-created snapshots hold 1.3 TiB, about 40% of the used Longhorn disk.
 ## Live check (lab, Harvester v1.8.2, 2026-10-06 and 2026-10-07)
 
 `verify-metrics.py` plus every panel and alert query executed against the lab Prometheus: all 110 default panels (120 in
-the PSI variant) and all 25 alert expressions run without query errors (`verify-queries.py`: 221 queries, 0 errors, graphs run as
+the PSI variant) and all 24 alert expressions then in the chart run without query errors (`verify-queries.py`: 221 queries, 0 errors, graphs run as
 6 h ranges), and all 65 metrics they use exist (`verify-metrics.py`: 0 absent). The dashboards
 were then opened in Grafana (through the Harvester API proxy) and the problems that only show there were fixed.
 
@@ -309,9 +309,10 @@ the per-VM and host pressure panels show real values, and the three host pressur
      available, no swap, memory PSI under 3%) but node IO pressure was already 10-20% before the test started, so the
      test is an unlikely root cause (storage stalls are the better suspect), though not excluded. The blackout cleared
      about a minute after the test VM was deleted.
-     In such a case the launcher memory and PSI panels still work. Not yet built: an alert for running VMs without
-     `kubevirt_vmi_vcpu_seconds_total` (`kubevirt_vmi_info{phase="running"} unless on (namespace, name)
-     kubevirt_vmi_vcpu_seconds_total{id="0"}` returned exactly `smlm-prod`).
+     In such a case the launcher memory and PSI panels still work. `HarvesterVMMetricsMissing` (chart 0.4.9) now alerts
+     on it: the expression (`kubevirt_vmi_info{phase="running"} unless on (namespace, name)
+     kubevirt_vmi_vcpu_seconds_total{id="0"}`) returned exactly `smlm-prod` during the blackout. It has not been run
+     against a live Prometheus since it was added, and has not fired in a real blackout.
    - Disk IO phase: not measured (the same blackout hid the VM-level IOPS and latency); only node and Longhorn series
      were available.
 2. Right-sizing conclusions rest on 5 days of Prometheus data and on qemu-guest-agent for memory; see "Right-sizing and
