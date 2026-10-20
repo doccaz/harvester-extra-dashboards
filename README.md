@@ -302,7 +302,9 @@ the per-VM and host pressure panels show real values, and the three host pressur
      high (that needs host contention, which was not forced on a shared lab).
    - **Memory fill** (1.2 GiB, then 1.8 GiB of 2 GiB): guest memory went from 17% to 100% with about 120 major
      faults/s, no swap. The launcher working set ratcheted 42% -> 83% -> 90% and **stayed at 90% after the guest freed
-     the memory**: `HarvesterVMLauncherMemoryNearLimit` measures a high-water mark until the VM restarts, not current use.
+     the memory**: `HarvesterVMLauncherMemoryNearLimit` measures a high-water mark until the VM restarts, not current use. Seen again on
+     2026-10-20: `sles16-01` sat at 97% with the guest using 4% (page cache only). Since chart 0.4.11 the alert also needs
+     the guest above `alerts.thresholds.launcherGuestMemoryPercent` (80) or no guest memory data.
    - **Metric blackout (new finding).** From the start of the memory phase every `kubevirt_vmi_*` series (guest memory,
      vCPU, IOPS, latency) disappeared for all 12 VMs on that node for about 30 minutes, while cAdvisor series (launcher
      memory, PSI) and the other node were unaffected. virt-handler logged `Collection timeout` every minute and

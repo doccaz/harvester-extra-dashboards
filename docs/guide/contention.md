@@ -51,7 +51,8 @@ Graphs, one line per VM (top N):
   default, so "No data" is the normal result.
 * **virt-launcher memory vs limit %**: working set of the launcher container against its limit. Close to 100% the
   launcher (guest RAM plus QEMU overhead) is about to be OOM-killed. This is the panel behind the *Near mem limit*
-  tile and the `HarvesterVMLauncherMemoryNearLimit` alert.
+  tile and the `HarvesterVMLauncherMemoryNearLimit` alert (which also needs the guest above 80% of its memory, because
+  this panel only ratchets up as the guest touches pages and stays there until the VM restarts).
 * **VM memory pressure (PSI)**: host-side memory contention as each VM sees it.
 * **Host memory available %** (dashed lines at 20% and 10%), **Host memory pressure (PSI)** (*some* = at least one
   task waited, *full* = all non-idle tasks stalled) and **Host major faults/s and OOM kills**.

@@ -52,6 +52,8 @@ alerts:
     cpuReadyCritical: 10
     guestMemoryPercent: 95
     launcherMemoryPercent: 95
+    # the launcher alert also needs the guest above this (MemAvailable based); guests that only filled their page cache stay quiet
+    launcherGuestMemoryPercent: 80
     vmDiskLatencyMs: 50
     longhornLatencyMs: 50
     vmNetworkDropsPerSecond: 10

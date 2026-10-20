@@ -24,7 +24,7 @@ incident routine in the [overview](README.md).
 | HarvesterVMCPUReadyHigh | warning | CPU Ready above 5% for 15 m | [Contention](contention.md), Detail v2 |
 | HarvesterVMCPUReadyCritical | critical | CPU Ready above 10% for 10 m | same; the host is oversubscribed |
 | HarvesterVMGuestMemoryHigh | warning | guest memory in use above 95% for 15 m | Detail v2 memory row |
-| HarvesterVMLauncherMemoryNearLimit | critical | launcher memory above 95% of its limit for 10 m | OOM-kill risk; raise the VM's memory |
+| HarvesterVMLauncherMemoryNearLimit | critical | launcher memory above 95% of its limit for 10 m **and** the guest above 80% of its memory (or no guest memory data) | OOM-kill risk; raise the VM's memory. A guest that only filled its page cache does not fire (the launcher figure stays high until the VM restarts) |
 | HarvesterVMLauncherOOMKilled | critical | a virt-launcher container was OOM-killed | the VM went down; check why before restarting |
 | HarvesterVMDiskLatencyHigh | warning | VM disk write latency above 50 ms for 10 m | Contention storage row |
 | HarvesterVMLonghornLatencyHigh | warning | Longhorn latency of the VM's volume above 50 ms for 10 m | storage layer: replicas, node disks, network |

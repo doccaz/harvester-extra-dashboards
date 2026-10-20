@@ -7,6 +7,7 @@ placeholders are substituted, so Prometheus templates such as {{ $labels.name }}
 {{- $tokens := dict
       "CPU_READY_WARN" $t.cpuReadyWarn "CPU_READY_CRIT" $t.cpuReadyCritical
       "GUEST_MEM" $t.guestMemoryPercent "LAUNCHER_MEM" $t.launcherMemoryPercent
+      "LAUNCHER_GUEST_MEM" $t.launcherGuestMemoryPercent
       "VM_DISK_LATENCY_MS" $t.vmDiskLatencyMs "LH_LATENCY_MS" $t.longhornLatencyMs
       "NET_DROPS" $t.vmNetworkDropsPerSecond "HOST_CPU_PSI" $t.hostCpuPressurePercent
       "HOST_MEM_PSI" $t.hostMemoryPressurePercent "HOST_IO_PSI" $t.hostIoPressurePercent

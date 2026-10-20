@@ -1020,6 +1020,7 @@ def launcher_psi_by_vm(resource):
 ALERT_TOKENS = {  # token -> (values key, default)
     "CPU_READY_WARN": ("cpuReadyWarn", 5), "CPU_READY_CRIT": ("cpuReadyCritical", 10),
     "GUEST_MEM": ("guestMemoryPercent", 95), "LAUNCHER_MEM": ("launcherMemoryPercent", 95),
+    "LAUNCHER_GUEST_MEM": ("launcherGuestMemoryPercent", 80),
     "VM_DISK_LATENCY_MS": ("vmDiskLatencyMs", 50), "LH_LATENCY_MS": ("longhornLatencyMs", 50),
     "NET_DROPS": ("vmNetworkDropsPerSecond", 10), "HOST_CPU_PSI": ("hostCpuPressurePercent", 30),
     "HOST_MEM_PSI": ("hostMemoryPressurePercent", 10), "HOST_IO_PSI": ("hostIoPressurePercent", 40),
@@ -1071,10 +1072,16 @@ def alert_rules():
                  vm + " is running out of memory",
                  vm + " uses {{ $value | printf \"%.1f\" }}% of its memory (MemAvailable, page cache not counted; needs "
                       "qemu-guest-agent). Above __GUEST_MEM__% for 15 minutes."),
-            rule("HarvesterVMLauncherMemoryNearLimit", "(%s) > __LAUNCHER_MEM__" % launcher, "10m", "critical",
+            # The launcher working set ratchets up as the guest touches pages (page cache included) and stays there
+            # until the VM restarts, so a high value alone is not a risk. Alert only when the guest itself is under
+            # memory pressure; a VM with no guest-agent memory data (no gmem series) keeps the plain launcher check.
+            rule("HarvesterVMLauncherMemoryNearLimit",
+                 "((%s) > __LAUNCHER_MEM__) unless on (namespace, name) ((%s) <= __LAUNCHER_GUEST_MEM__)"
+                 % (launcher, gmem), "10m", "critical",
                  vm + " is close to being OOM-killed",
-                 "The virt-launcher of " + vm + " uses {{ $value | printf \"%.1f\" }}% of its memory limit. If it "
-                 "reaches the limit the VM is killed."),
+                 "The virt-launcher of " + vm + " uses {{ $value | printf \"%.1f\" }}% of its memory limit and the "
+                 "guest uses more than __LAUNCHER_GUEST_MEM__% of its memory (or reports no memory data). If the "
+                 "launcher reaches the limit the VM is killed."),
             rule("HarvesterVMLauncherOOMKilled",
                  'increase(container_oom_events_total{%s}[10m]) > 0' % lp, "0m", "critical",
                  "virt-launcher {{ $labels.pod }} was OOM-killed",

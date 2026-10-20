@@ -41,14 +41,14 @@
         },
         {
           "alert": "HarvesterVMLauncherMemoryNearLimit",
-          "expr": "(max by (namespace, name) (label_replace(100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container=\"compute\",pod=~\"virt-launcher-.*\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\",container=\"compute\",pod=~\"virt-launcher-.*\"}), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > __LAUNCHER_MEM__",
+          "expr": "((max by (namespace, name) (label_replace(100 * max by (namespace, pod, container) (container_memory_working_set_bytes{container=\"compute\",pod=~\"virt-launcher-.*\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\",container=\"compute\",pod=~\"virt-launcher-.*\"}), \"name\", \"$1\", \"pod\", \"virt-launcher-(.*)-[a-z0-9]{5}\"))) > __LAUNCHER_MEM__) unless on (namespace, name) ((100 * (1 - max by (namespace, name) (kubevirt_vmi_memory_usable_bytes) / max by (namespace, name) (kubevirt_vmi_memory_available_bytes))) <= __LAUNCHER_GUEST_MEM__)",
           "for": "10m",
           "labels": {
             "severity": "critical"
           },
           "annotations": {
             "summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is close to being OOM-killed",
-            "description": "The virt-launcher of VM {{ $labels.namespace }}/{{ $labels.name }} uses {{ $value | printf \"%.1f\" }}% of its memory limit. If it reaches the limit the VM is killed."
+            "description": "The virt-launcher of VM {{ $labels.namespace }}/{{ $labels.name }} uses {{ $value | printf \"%.1f\" }}% of its memory limit and the guest uses more than __LAUNCHER_GUEST_MEM__% of its memory (or reports no memory data). If the launcher reaches the limit the VM is killed."
           }
         },
         {
