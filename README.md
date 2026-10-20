@@ -114,6 +114,9 @@ Both dashboards are for **decisions**, not alerts: they list candidates and a su
   lists *candidates*: a PVC can be bound for a purpose the metrics cannot see.
 - **N-1 headroom** = pod memory requests / (allocatable memory minus the largest host); hosts exclude the witness
   (label `node-role.harvesterhci.io/witness`). Above 100% the cluster cannot reschedule everything if that host fails.
+  Only Pending/Running pods count: kube-state-metrics keeps reporting the requests of Completed pods (such as the old
+  launcher left behind by a live migration), which the scheduler ignores (chart 0.4.10; it lowered the lab's figure
+  from 167% to 159%).
 - Tables join their columns with Grafana's `merge` transformation on namespace/VM, so each column query is
   restricted to the same VM set; the VM name links to the detail dashboard.
 
@@ -201,7 +204,7 @@ user-created snapshots hold 1.3 TiB, about 40% of the used Longhorn disk.
 
 `verify-metrics.py` plus every panel and alert query executed against the lab Prometheus: all 110 default panels (120 in
 the PSI variant) and all 25 alert expressions run without query errors (`verify-queries.py`: 222 queries in the PSI variant, 203 in the default, 0 errors, graphs run as
-6 h ranges), and all 65 metrics they use exist (`verify-metrics.py`: 0 absent). The dashboards
+6 h ranges), and all 66 metrics they use exist (`verify-metrics.py`: 0 absent). The dashboards
 were then opened in Grafana (through the Harvester API proxy) and the problems that only show there were fixed.
 
 - `kubevirt_vmi_vcpu_delay_seconds_total` is emitted, so CPU Ready works. Guest-agent memory, launcher limits, CFS and

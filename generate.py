@@ -547,8 +547,8 @@ def detail():
     d.ts("Launcher working set vs request/limit", "Host-side memory of the launcher pod against what it is "
          "allowed. Working set approaching the limit = OOM risk.",
          [("sum(container_memory_working_set_bytes{%s})" % lp1, "working set"),
-          ('sum(kube_pod_container_resource_requests{resource="memory",%s})' % lp1, "request"),
-          ('sum(kube_pod_container_resource_limits{resource="memory",%s})' % lp1, "limit"),
+          ('sum(kube_pod_container_resource_requests{resource="memory",%s}%s)' % (lp1, LIVE_POD), "request"),
+          ('sum(kube_pod_container_resource_limits{resource="memory",%s}%s)' % (lp1, LIVE_POD), "limit"),
           ("max(kubevirt_vmi_memory_resident_bytes%s)" % one, "QEMU resident (RSS)"),
           ("max(kubevirt_vmi_launcher_memory_overhead_bytes%s)" % one, "launcher overhead")],
          unit="bytes", w=8, fill=0)
@@ -768,7 +768,10 @@ def hosts(e):
 
 ALLOC_CPU = 'kube_node_status_allocatable{resource="cpu"}'
 ALLOC_MEM = 'kube_node_status_allocatable{resource="memory"}'
-REQ_MEM = 'sum by (node) (kube_pod_container_resource_requests{resource="memory"})'
+# kube-state-metrics keeps reporting the requests of Completed/Failed pods (an old launcher after a live migration),
+# which the scheduler ignores; keep only pods that still hold their reservation.
+LIVE_POD = ' * on (namespace, pod, uid) group_left () (kube_pod_status_phase{phase=~"Pending|Running"} == 1)'
+REQ_MEM = 'sum by (node) (kube_pod_container_resource_requests{resource="memory"}%s)' % LIVE_POD
 VCPU_BY_NODE = ("sum by (node) (count by (namespace, name, node) (group by (namespace, name, node, id) "
                 "(kubevirt_vmi_vcpu_seconds_total)))")
 MEM_BY_NODE = "sum by (node) (max by (namespace, name, node) (kubevirt_vmi_memory_domain_bytes))"

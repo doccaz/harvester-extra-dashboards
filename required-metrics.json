@@ -431,6 +431,7 @@
       "container_memory_working_set_bytes",
       "kube_pod_container_resource_limits",
       "kube_pod_container_resource_requests",
+      "kube_pod_status_phase",
       "kubevirt_vmi_launcher_memory_overhead_bytes",
       "kubevirt_vmi_memory_resident_bytes"
     ],
@@ -701,7 +702,8 @@
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
-      "kube_pod_container_resource_requests"
+      "kube_pod_container_resource_requests",
+      "kube_pod_status_phase"
     ],
     "psi": false
   },
@@ -711,7 +713,8 @@
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
-      "kube_pod_container_resource_requests"
+      "kube_pod_container_resource_requests",
+      "kube_pod_status_phase"
     ],
     "psi": false
   },
@@ -755,7 +758,8 @@
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
-      "kube_pod_container_resource_requests"
+      "kube_pod_container_resource_requests",
+      "kube_pod_status_phase"
     ],
     "psi": false
   },
@@ -765,7 +769,8 @@
     "metrics": [
       "kube_node_labels",
       "kube_node_status_allocatable",
-      "kube_pod_container_resource_requests"
+      "kube_pod_container_resource_requests",
+      "kube_pod_status_phase"
     ],
     "psi": false
   },
@@ -814,6 +819,7 @@
       "kube_node_labels",
       "kube_node_status_allocatable",
       "kube_pod_container_resource_requests",
+      "kube_pod_status_phase",
       "kubevirt_vmi_cpu_usage_seconds_total",
       "kubevirt_vmi_vcpu_seconds_total",
       "node_cpu_seconds_total",
