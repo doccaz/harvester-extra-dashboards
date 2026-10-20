@@ -220,7 +220,7 @@ were then opened in Grafana (through the Harvester API proxy) and the problems t
   series per state (label `state`, value 0/1) and detached volumes report robustness `unknown`.
 - What the lab showed: CPU Ready peaked near 17% while VMs were bunched on fewer hosts during node reboots, the busiest
   disk of one node sat at 100% for stretches (await up to ~250 ms), memory requests are 145-152% of what would remain after
-  losing the biggest host, most Longhorn volumes have never been backed up (18 of 24 VMs have at least one), and `harv01lab` had 20 kernel OOM kills.
+  losing the biggest host, most Longhorn volumes have never been backed up (18 of 24 VMs have at least one), and one host had 20 kernel OOM kills.
 - PSI is now enabled on all three lab nodes (next section) and its panels show data.
 
 ## Pressure (PSI) panels: kernel prerequisite
@@ -284,7 +284,7 @@ comes from the code; the docs do not state it explicitly.)
    (or `./apply.sh --psi`) adds the 10 PSI panels and tiles. Each panel only has data for the nodes that already
    run with `psi=1`.
 
-**Verified on one node first (2026-10-06).** After setting `psi=1` on `harvlab-witness` only: `node_pressure_*` (5 series)
+**Verified on one node first (2026-10-06).** After setting `psi=1` on one node only: `node_pressure_*` (5 series)
 and non-zero cAdvisor pressure appeared for that node within minutes, with no node-exporter change, while the other
 two nodes stayed at exactly 0. With the PSI variant installed the host panels showed that node (CPU "some" 2.2%,
 I/O "some" 38.7% / "full" 31.9%, memory 0); the per-VM panels stay at 0 until the nodes running the VMs are switched.
@@ -303,13 +303,13 @@ the per-VM and host pressure panels show real values, and the three host pressur
    - **Memory fill** (1.2 GiB, then 1.8 GiB of 2 GiB): guest memory went from 17% to 100% with about 120 major
      faults/s, no swap. The launcher working set ratcheted 42% -> 83% -> 90% and **stayed at 90% after the guest freed
      the memory**: `HarvesterVMLauncherMemoryNearLimit` measures a high-water mark until the VM restarts, not current use. Seen again on
-     2026-10-20: `sles16-01` sat at 97% with the guest using 4% (page cache only). Since chart 0.4.11 the alert also needs
+     2026-10-20: one VM sat at 97% with the guest using 4% (page cache only). Since chart 0.4.11 the alert also needs
      the guest above `alerts.thresholds.launcherGuestMemoryPercent` (80) or no guest memory data.
    - **Metric blackout (new finding).** From the start of the memory phase every `kubevirt_vmi_*` series (guest memory,
      vCPU, IOPS, latency) disappeared for all 12 VMs on that node for about 30 minutes, while cAdvisor series (launcher
      memory, PSI) and the other node were unaffected. virt-handler logged `Collection timeout` every minute and
-     `failed to scrape metrics` for the launcher socket of one pre-existing VM (`smlm-prod`) from the same second the
-     phase began. One stuck launcher blanks the VM panels of its whole node. The `smlm-prod` console showed guest
+     `failed to scrape metrics` for the launcher socket of one pre-existing VM from the same second the
+     phase began. One stuck launcher blanks the VM panels of its whole node. That VM's console showed guest
      kernel soft lockups (CPU#1 stuck 21-22 s, RCU stalls) at about 03:33 and 03:55 UTC, inside that window (computed
      from the guest uptime shown), so its vCPUs were stalling. The host had no memory pressure at the time (about 30 GiB
      available, no swap, memory PSI under 3%) but node IO pressure was already 10-20% before the test started, so the
@@ -317,7 +317,7 @@ the per-VM and host pressure panels show real values, and the three host pressur
      about a minute after the test VM was deleted.
      In such a case the launcher memory and PSI panels still work. `HarvesterVMMetricsMissing` (chart 0.4.9) now alerts
      on it: the expression (`kubevirt_vmi_info{phase="running"} unless on (namespace, name)
-     kubevirt_vmi_vcpu_seconds_total{id="0"}`) returned exactly `smlm-prod` during the blackout. It evaluates without error
+     kubevirt_vmi_vcpu_seconds_total{id="0"}`) returned exactly that VM during the blackout. It evaluates without error
      on the lab (2026-10-20) and returns nothing while every running VM reports metrics; it has not fired in a real blackout.
    - Disk IO phase: not measured (the same blackout hid the VM-level IOPS and latency); only node and Longhorn series
      were available.

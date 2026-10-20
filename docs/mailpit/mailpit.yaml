@@ -126,7 +126,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: mailpit.conteudoquestionavel.org                 # <- CHANGE to your hostname
+    - host: mailpit.example.com                 # <- CHANGE to your hostname
       http:
         paths:
           - path: /
@@ -138,4 +138,4 @@ spec:
                   number: 8025
   tls:
     - hosts:
-        - mailpit.conteudoquestionavel.org                   # <- same hostname; no secretName: the controller's default certificate, like auth/kasten
+        - mailpit.example.com                   # <- same hostname; no secretName: the controller's default certificate, like the cluster's other Ingresses

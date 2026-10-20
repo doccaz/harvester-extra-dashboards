@@ -19,7 +19,7 @@ Everything below was applied and tested on the lab (Harvester v1.8.2, kube conte
 | Volume | PVC `mailpit-data` | 1 GiB, storage class `harvester-2replicas` (the lab default), mounted at `/data` (SQLite database); keeps up to 500 messages (`MP_MAX_MESSAGES`) |
 | Service `mailpit` | ClusterIP `:1025` | **SMTP**, what Alertmanager talks to (`mailpit.cattle-monitoring-system.svc:1025`); needs a login |
 | Service `mailpit-web` | ClusterIP `:8025` | web UI and API, only reached through the Ingress or a port-forward |
-| Ingress `mailpit` | `mailpit.conteudoquestionavel.org` | class `nginx`, path `/`, backend `mailpit-web:8025`, `tls` with the host and no secret (the controller's default certificate, like the `auth` and `kasten` Ingresses); read/send timeouts 3600 s for the live-update websocket |
+| Ingress `mailpit` | `mailpit.example.com` | class `nginx`, path `/`, backend `mailpit-web:8025`, `tls` with the host and no secret (the controller's default certificate, like the cluster's other Ingresses); read/send timeouts 3600 s for the live-update websocket |
 | Secret `mailpit-smtp` | key `smtp-auth` | `alertmanager:<password>`, the SMTP login; read by Mailpit (`MP_SMTP_AUTH`) |
 | Secret `mailpit-ui` | key `ui-auth` | `mailpit:<password>`, the web UI/API login (HTTP basic); read by Mailpit (`MP_UI_AUTH`) |
 
@@ -29,16 +29,16 @@ Alertmanager's config Secret). They are never in git.
 ## How it is reached in the lab
 
 ```
-browser --HTTPS--> Cloudflare --tunnel (cloudflared, ns cloudflare)--> https://192.168.86.250 (Harvester VIP, nginx ingress)
+browser --HTTPS--> Cloudflare --tunnel (cloudflared, ns cloudflare)--> https://<VIP> (Harvester VIP, nginx ingress)
                                                                         --> Service mailpit-web:8025 --> Mailpit (login required)
 Alertmanager --SMTP :1025 + login--> Service mailpit --> Mailpit --> PVC mailpit-data
 ```
 
-- The Harvester VIP `192.168.86.250` serves the `nginx` Ingress class. It presents a self-signed certificate for every
+- The Harvester VIP `<VIP>` serves the `nginx` Ingress class. It presents a self-signed certificate for every
   hostname, so browsers only see a valid one because **Cloudflare** terminates TLS in front.
 - The lab's public hostnames go through a **remotely managed `cloudflared` tunnel** (deployment `cloudflared` in the
   `cloudflare` namespace, `TUNNEL_TOKEN`). Its routes live in Cloudflare Zero Trust, not in the cluster. For this host
-  there is a *Public hostname* `mailpit.conteudoquestionavel.org` -> service `https://192.168.86.250` with **No TLS
+  there is a *Public hostname* `mailpit.example.com` -> service `https://<VIP>` with **No TLS
   Verify** on, like the other lab hostnames. Cloudflare creates the DNS record.
 - Cluster-internal traffic (Alertmanager -> Mailpit SMTP) is plain SMTP with a login, on the pod network.
 
@@ -51,14 +51,14 @@ K="kubectl --context local -n cattle-monitoring-system"
 printf 'alertmanager:%s' "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)" | $K create secret generic mailpit-smtp --from-file=smtp-auth=/dev/stdin
 printf 'mailpit:%s'      "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)" | $K create secret generic mailpit-ui   --from-file=ui-auth=/dev/stdin
 
-# 2. edit the hostname (twice, at the bottom of the file) if it is not mailpit.conteudoquestionavel.org, then apply
+# 2. edit the hostname (twice, at the bottom of the file) if it is not mailpit.example.com, then apply
 kubectl --context local apply -f docs/mailpit/mailpit.yaml
 $K rollout status deploy/mailpit
 
 # 3. Cloudflare: add the Public hostname to the tunnel (see above). Until it exists, test from the LAN:
 AUTH=$($K get secret mailpit-ui -o jsonpath='{.data.ui-auth}' | base64 -d)
-printf 'user = "%s"\n' "$AUTH" | curl -sk -K - --resolve mailpit.conteudoquestionavel.org:443:192.168.86.250 \
-  https://mailpit.conteudoquestionavel.org/api/v1/info | jq .
+printf 'user = "%s"\n' "$AUTH" | curl -sk -K - --resolve mailpit.example.com:443:<VIP> \
+  https://mailpit.example.com/api/v1/info | jq .
 unset AUTH
 ```
 
@@ -66,7 +66,7 @@ Then point Alertmanager at it: [`../alertmanager/README.md`](../alertmanager/REA
 
 ## Using it
 
-- **Web UI:** `https://mailpit.conteudoquestionavel.org`, user `mailpit`. Read the password with
+- **Web UI:** `https://mailpit.example.com`, user `mailpit`. Read the password with
   `kubectl --context local -n cattle-monitoring-system get secret mailpit-ui -o jsonpath='{.data.ui-auth}' | base64 -d`
   (the part after `mailpit:`).
 - **API** (same login): `GET /api/v1/messages` lists mails, `GET /api/v1/message/<ID>` reads one, `DELETE /api/v1/messages`
@@ -109,7 +109,7 @@ Then point Alertmanager at it: [`../alertmanager/README.md`](../alertmanager/REA
 
 | Symptom | Cause and fix |
 |---|---|
-| The hostname does not resolve right after you created the route, though `dig @1.1.1.1` answers | A cached "does not exist" in your router or machine (this zone's negative TTL is 30 minutes). Wait, flush the browser/OS cache, or use 1.1.1.1 temporarily. Test the whole path meanwhile with `curl --resolve mailpit.conteudoquestionavel.org:443:104.21.27.71 ...` |
+| The hostname does not resolve right after you created the route, though `dig @1.1.1.1` answers | A cached "does not exist" in your router or machine (this zone's negative TTL is 30 minutes). Wait, flush the browser/OS cache, or use 1.1.1.1 temporarily. Test the whole path meanwhile with `curl --resolve mailpit.example.com:443:104.21.27.71 ...` |
 | `401` in the browser or curl | Missing or wrong UI login; read it from Secret `mailpit-ui` |
 | Alertmanager logs `establish connection to server` / `Notify retry canceled` | Mailpit was down or restarting. Alertmanager retries; mails resume when it is back. A *firing* notification that exhausted its retries is not re-sent until the group changes |
 | Alertmanager logs an SMTP auth failure | `auth_password` in the Alertmanager config differs from Secret `mailpit-smtp` |

@@ -17,7 +17,7 @@ Checked offline with `amtool` 0.28.1 (the version in Harvester v1.8.2): `check-c
 sends `Harvester*` alerts (warning and critical, with and without a `namespace` label) to `harvester-extra-email` and
 `KubeCPUOvercommit`, `CPUThrottlingHigh`, `LonghornVolumeActualSpaceUsedWarning` and `Watchdog` to `"null"`.
 **Applied and tested on the lab (2026-10-07):** a hand-sent alert was routed, authenticated and delivered
-(`[FIRING:1] HarvesterTestAlert labs (warning)`, email counter 1 sent / 0 failed), and later a real
+(`[FIRING:1] HarvesterTestAlert my-namespace (warning)`, email counter 1 sent / 0 failed), and later a real
 `HarvesterVMLauncherMemoryNearLimit` critical alert arrived the same way.
 
 ## Apply it
@@ -51,7 +51,7 @@ curl -s localhost:9093/metrics | grep alertmanager_config_last_reload_successful
 
 ```bash
 curl -s -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d \
- '[{"labels":{"alertname":"HarvesterTestAlert","severity":"warning","namespace":"labs"},"annotations":{"summary":"routing test"}}]'
+ '[{"labels":{"alertname":"HarvesterTestAlert","severity":"warning","namespace":"my-namespace"},"annotations":{"summary":"routing test"}}]'
 ```
 
 After Alertmanager's 30 s group wait the mail appears in the Mailpit UI. The test alert resolves by itself after five
@@ -72,7 +72,7 @@ from the `externalUrl` of the Alertmanager and Prometheus objects, which the `ra
 Opened from a mail, that address answers "not authorized": the Harvester API behind it wants the session of the
 Harvester UI, and the browser's login belongs to the hostname you use for Harvester, not to the bare IP.
 
-Set both URLs to the hostname you log in with (the lab uses `harvester.conteudoquestionavel.org`), in the add-on's
+Set both URLs to the hostname you log in with (for example `harvester.example.com`), in the add-on's
 values (Harvester UI: *Advanced > Add-ons > rancher-monitoring > Edit YAML*, or the `addons.harvesterhci.io` object):
 
 ```yaml
@@ -96,7 +96,7 @@ Alertmanager Secret was untouched by that add-on redeploy.
 
 - **Why the global config and not `AlertmanagerConfig` resources (or their UI):** the Prometheus operator adds
   `namespace="<the AlertmanagerConfig's namespace>"` to such routes by default, and these alerts carry the *VM's*
-  namespace (`labs`) or none at all (N-1, node alerts), so they would not match.
+  namespace (`my-namespace`) or none at all (N-1, node alerts), so they would not match.
 - **Persistence (partly verified):** the Secret is created by the monitoring chart, so redeploying the add-on may reset
   it. On the lab an add-on redeploy (changing only the two external URLs above) left the Secret and the route intact,
   but an add-on *upgrade* or a change to `alertmanager.config` may not. The durable place is the add-on's
