@@ -1107,15 +1107,190 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Memory per container in the launcher pod",
+      "description": "Working set of every container in the virt-launcher pod (compute, guest-console-log, container-disk and hotplug sidecars). cAdvisor reports per container (cgroup); per-process memory inside a container is not exposed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 17,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (container) (container_memory_working_set_bytes{namespace=\"$namespace\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "{{container}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 20,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Where the compute container's memory goes",
+      "description": "compute working set split into guest RAM (domain, as seen by the host) and overhead (QEMU, libvirt, virt-launcher, page cache of the container). overhead = working set - domain; clamped at 0. Processes inside the guest are only visible with an agent in the VM (e.g. node_exporter).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "id": 18,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max(container_memory_working_set_bytes{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"})",
+          "legendFormat": "compute working set",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max(kubevirt_vmi_memory_domain_bytes{namespace=\"$namespace\",name=\"$vm\"})",
+          "legendFormat": "guest RAM (domain)",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max(kubevirt_vmi_memory_resident_bytes{namespace=\"$namespace\",name=\"$vm\"})",
+          "legendFormat": "QEMU resident (RSS)",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "clamp_min(max(container_memory_working_set_bytes{namespace=\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}) - max(kubevirt_vmi_memory_domain_bytes{namespace=\"$namespace\",name=\"$vm\"}), 0)",
+          "legendFormat": "overhead (working set - domain)",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "type": "row",
       "title": "Storage",
       "collapsed": false,
-      "id": 17,
+      "id": 19,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 31
       },
       "panels": []
     },
@@ -1127,12 +1302,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 18,
+      "id": 20,
       "gridPos": {
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 24
+        "y": 32
       },
       "targets": [
         {
@@ -1209,12 +1384,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 19,
+      "id": 21,
       "gridPos": {
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 24
+        "y": 32
       },
       "targets": [
         {
@@ -1291,12 +1466,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 20,
+      "id": 22,
       "gridPos": {
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 24
+        "y": 32
       },
       "targets": [
         {
@@ -1392,12 +1567,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 21,
+      "id": 23,
       "gridPos": {
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 24
+        "y": 32
       },
       "targets": [
         {
@@ -1468,12 +1643,12 @@
       "type": "row",
       "title": "Network",
       "collapsed": false,
-      "id": 22,
+      "id": 24,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 40
       },
       "panels": []
     },
@@ -1485,12 +1660,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 23,
+      "id": 25,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 33
+        "y": 41
       },
       "targets": [
         {
@@ -1567,12 +1742,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 24,
+      "id": 26,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 33
+        "y": 41
       },
       "targets": [
         {
@@ -1638,12 +1813,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 25,
+      "id": 27,
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 33
+        "y": 41
       },
       "targets": [
         {
@@ -1705,12 +1880,12 @@
       "type": "row",
       "title": "Host this VM runs on",
       "collapsed": false,
-      "id": 26,
+      "id": 28,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 49
       },
       "panels": []
     },
@@ -1722,12 +1897,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 27,
+      "id": 29,
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 50
       },
       "targets": [
         {
@@ -1823,12 +1998,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 28,
+      "id": 30,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 50
+        "y": 58
       },
       "targets": [
         {
@@ -1924,12 +2099,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 29,
+      "id": 31,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 50
+        "y": 58
       },
       "targets": [
         {
@@ -2004,12 +2179,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "id": 30,
+      "id": 32,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 58
+        "y": 66
       },
       "targets": [
         {

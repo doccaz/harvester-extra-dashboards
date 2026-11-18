@@ -29,6 +29,12 @@ high CPU Ready is being starved by the host.
 * **Guest swap and major faults**: swap traffic over 5 minutes and major page faults per second.
 * **Launcher working set vs request/limit**: host-side memory of the launcher pod against what it is allowed;
   a working set approaching the limit is an OOM risk.
+* **Memory per container in the launcher pod**: working set of every container in the virt-launcher pod
+  (compute, guest-console-log, container-disk and hotplug sidecars), stacked. This is the finest granularity
+  the platform exposes: cAdvisor reports per container, not per process.
+* **Where the compute container's memory goes**: compute working set against guest RAM (domain), QEMU RSS and the
+  overhead (working set minus domain). Per-process memory inside the guest needs an agent in the VM, for example
+  node_exporter or process-exporter scraped by a ServiceMonitor; the chart cannot provide it from the host.
 
 ## Storage and network
 

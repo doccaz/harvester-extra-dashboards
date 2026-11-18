@@ -439,6 +439,24 @@
   },
   {
     "dashboard": "harvester-vm-detail-v2",
+    "panel": "Memory per container in the launcher pod",
+    "metrics": [
+      "container_memory_working_set_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
+    "panel": "Where the compute container's memory goes",
+    "metrics": [
+      "container_memory_working_set_bytes",
+      "kubevirt_vmi_memory_domain_bytes",
+      "kubevirt_vmi_memory_resident_bytes"
+    ],
+    "psi": false
+  },
+  {
+    "dashboard": "harvester-vm-detail-v2",
     "panel": "IOPS",
     "metrics": [
       "kubevirt_vmi_storage_iops_read_total",

@@ -552,6 +552,23 @@ def detail():
           ("max(kubevirt_vmi_memory_resident_bytes%s)" % one, "QEMU resident (RSS)"),
           ("max(kubevirt_vmi_launcher_memory_overhead_bytes%s)" % one, "launcher overhead")],
          unit="bytes", w=8, fill=0)
+    allc = 'namespace="$namespace",pod=~"virt-launcher-$vm-[a-z0-9]{5}",container!="",container!="POD"'
+    d.ts("Memory per container in the launcher pod",
+         "Working set of every container in the virt-launcher pod (compute, guest-console-log, container-disk "
+         "and hotplug sidecars). cAdvisor reports per container (cgroup); per-process memory inside a container "
+         "is not exposed.",
+         [("sum by (container) (container_memory_working_set_bytes{%s})" % allc, "{{container}}")],
+         unit="bytes", w=12, fill=20, stack=True)
+    d.ts("Where the compute container's memory goes",
+         "compute working set split into guest RAM (domain, as seen by the host) and overhead (QEMU, libvirt, "
+         "virt-launcher, page cache of the container). overhead = working set - domain; clamped at 0. "
+         "Processes inside the guest are only visible with an agent in the VM (e.g. node_exporter).",
+         [("max(container_memory_working_set_bytes{%s})" % lp1, "compute working set"),
+          ("max(kubevirt_vmi_memory_domain_bytes%s)" % one, "guest RAM (domain)"),
+          ("max(kubevirt_vmi_memory_resident_bytes%s)" % one, "QEMU resident (RSS)"),
+          ("clamp_min(max(container_memory_working_set_bytes{%s}) - max(kubevirt_vmi_memory_domain_bytes%s), 0)"
+           % (lp1, one), "overhead (working set - domain)")],
+         unit="bytes", w=12, fill=0)
 
     d.row("Storage")
     d.ts("IOPS", "Read/write operations per second.",
