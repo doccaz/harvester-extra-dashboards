@@ -46,7 +46,6 @@
     "dashboard": "harvester-vm-contention-v1",
     "panel": "OOM kills (1h)",
     "metrics": [
-      "container_oom_events_total",
       "node_uname_info",
       "node_vmstat_oom_kill"
     ],

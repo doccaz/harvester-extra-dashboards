@@ -375,7 +375,7 @@
     {
       "type": "stat",
       "title": "OOM kills (1h)",
-      "description": "Kernel OOM kills on the nodes (any process, including pods killed at their memory limit) plus OOM events of virt-launcher compute containers in the last hour. A launcher OOM kill takes the VM down.",
+      "description": "Kernel OOM kills on the selected nodes in the last hour (node_vmstat_oom_kill, summed over all nodes, so dmesg on a single node shows only part of it). Includes pods killed at their memory limit, such as a virt-launcher, which takes the VM down. Counts every killed process, not only VMs. Per-node breakdown: the host OOM panel on the Contention dashboard.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -394,7 +394,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "round(sum(increase(node_vmstat_oom_kill[1h]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})) + (sum(increase(container_oom_events_total{namespace=~\"$namespace\",container=\"compute\",pod=~\"virt-launcher-$vm-[a-z0-9]{5}\"}[1h])) or vector(0)))",
+          "expr": "round(sum(increase(node_vmstat_oom_kill[1h]) * on (instance) group_left (nodename) max by (instance, nodename) (node_uname_info{nodename=~\"$node\"})))",
           "legendFormat": "",
           "range": false,
           "instant": true

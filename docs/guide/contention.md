@@ -18,7 +18,7 @@ All tiles count **VMs** unless they say otherwise. Green is the normal state.
 | Guest mem > 90% | VMs whose guest OS has less than 10% memory available (page cache is *not* counted as used) | Needs qemu-guest-agent. Grow the VM or fix the application |
 | Max mem PSI | Highest share of the last 5 minutes a VM's cgroup stalled waiting for memory on the host | Any sustained value means the host is reclaiming memory from that VM |
 | Max CPU PSI | Highest share of time a VM's cgroup waited for a CPU (throttling plus run-queue) | Complements CPU Ready from the host side |
-| OOM kills (1h) | Kernel OOM kills on the nodes plus OOM events of launcher containers in the last hour | A launcher OOM kill takes the VM down. Non-zero deserves a look the same day |
+| OOM kills (1h) | Kernel OOM kills (`node_vmstat_oom_kill`) summed over all selected nodes in the last hour; includes pods killed at their memory limit, such as a launcher | A launcher OOM kill takes the VM down. Non-zero deserves a look the same day. `dmesg` on one node shows only that node's share; the counter also restarts at 0 on a node reboot |
 | Near mem limit | VMs whose launcher uses more than 90% of its memory limit | OOM-kill risk for the VM. Raise the VM's memory (the limit follows) or find why overhead grew |
 | Throttled > 5% | VMs whose launcher hit its CPU limit in more than 5% of scheduling periods | Only relevant when CPU limits are set |
 | Unhealthy vols | Longhorn volumes that are degraded or faulted | A replica is missing or rebuilding; writes slow down meanwhile |

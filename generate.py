@@ -340,10 +340,11 @@ def contention():
     d.stat("Max CPU PSI", "Highest share of the last 5 minutes in which a VM's launcher cgroup "
            "waited for a CPU (PSI via cAdvisor): CPU limit throttling plus run-queue wait.",
            "max(%s)" % launcher_psi("cpu"), unit="percent", thr=OK_WARN_BAD(10, 25))
-    d.stat("OOM kills (1h)", "Kernel OOM kills on the nodes (any process, including pods killed at their memory limit) plus OOM "
-           "events of virt-launcher compute containers in the last hour. A launcher OOM kill takes the VM down.",
-           "round(sum(increase(node_vmstat_oom_kill[1h]) %s) + "
-           "(sum(increase(container_oom_events_total{%s}[1h])) or vector(0)))" % (NJ, LP),
+    d.stat("OOM kills (1h)", "Kernel OOM kills on the selected nodes in the last hour (node_vmstat_oom_kill, summed over "
+           "all nodes, so dmesg on a single node shows only part of it). Includes pods killed at their memory limit, "
+           "such as a virt-launcher, which takes the VM down. Counts every killed process, not only VMs. Per-node "
+           "breakdown: the host OOM panel on the Contention dashboard.",
+           "round(sum(increase(node_vmstat_oom_kill[1h]) %s))" % NJ,
            thr=steps(("green", None), ("red", 1)))
 
     d.stat("Near mem limit", "VMs whose virt-launcher working set is above 90% "

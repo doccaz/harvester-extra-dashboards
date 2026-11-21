@@ -143,6 +143,28 @@ volumes and `HarvesterNodeDiskLatencyHigh` (the witness's slow HDD; since chart 
 its memory limit and two stale backups). Longhorn exposes `robustness` as one series per state with a 0/1 value, and detached volumes report
 `unknown`, so only `degraded` and `faulted` alert.
 
+## Troubleshooting: panels with "No data"
+
+The launcher memory panels (*Memory per container in the launcher pod*, *Where the compute container's memory goes*,
+*Launcher working set vs request/limit*, *Near mem limit*) read `container_memory_working_set_bytes`, a cAdvisor
+metric exported by the kubelet. The `kubevirt_vmi_*` series come from virt-handler, a different scrape. If the
+guest RAM / QEMU RSS lines draw but the working-set series do not, Prometheus is not ingesting kubelet cAdvisor
+for the virt-launcher pods. Check in Grafana Explore (one expression per query box: use *Add query* or run them one
+at a time, since Prometheus rejects several expressions in one query):
+
+```
+count(container_memory_working_set_bytes)
+```
+
+```
+count by (namespace) (container_memory_working_set_bytes{pod=~"virt-launcher-.*"})
+```
+
+The first must be non-zero (the kubelet `/metrics/cadvisor` scrape must be enabled), and the second must list the
+VM namespace. If the series exist, compare their `container`, `pod` and `namespace` labels with the selectors in
+`generate.py` (`container="compute"`, `pod=~"virt-launcher-<vm>-xxxxx"`); relabeling in the monitoring stack can
+rename them.
+
 ## Storage contention (VM Contention dashboard)
 
 Under "Storage and network contention": Longhorn read/write latency and IOPS **per VM** (Longhorn's own measurement,
@@ -184,7 +206,7 @@ user-created snapshots hold 1.3 TiB, about 40% of the used Longhorn disk.
 | Memory Active vs Consumed | Guest memory in use | `1 - usable/available` (MemAvailable, cache not counted) |
 | Swapped | Guest swap activity, major faults | `kubevirt_vmi_memory_swap_*_traffic_bytes` (gauges), `pgmajfault_total` |
 | Ballooned | Memory balloon | `kubevirt_vmi_memory_actual_balloon_bytes` (normally empty on Harvester) |
-| Host memory contention | Host memory PSI (needs PSI, see below), OOM kills | `node_pressure_memory_*`, `node_vmstat_oom_kill`, `container_oom_events_total` |
+| Host memory contention | Host memory PSI (needs PSI, see below), OOM kills | `node_pressure_memory_*`, `node_vmstat_oom_kill` |
 | Virtual disk latency | Read/write latency | `rate(*_times_seconds_total) / rate(iops_*)` |
 
 ## Facts checked in source (KubeVirt v1.7.4, Harvester v1.8.2)
