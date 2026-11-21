@@ -3,6 +3,30 @@ entries:
   harvester-extra-dashboards:
   - apiVersion: v2
     appVersion: 1.8.2
+    created: "2026-11-21T10:21:09.719652198Z"
+    description: Community dashboards and alerts for Harvester / SUSE Virtualization
+      on the built-in rancher-monitoring stack (VM contention, detail, right-sizing,
+      capacity, scorecard, backup). Not an official SUSE product; for exploration
+      only.
+    digest: b7751a3bb98c3b3db4ac02c24ed66c18313fff20b9c98c3b7133fcceb7371ff3
+    home: https://github.com/doccaz/harvester-extra-dashboards
+    keywords:
+    - harvester
+    - suse-virtualization
+    - kubevirt
+    - grafana
+    - dashboards
+    maintainers:
+    - name: doccaz
+    name: harvester-extra-dashboards
+    sources:
+    - https://github.com/doccaz/harvester-extra-dashboards
+    type: application
+    urls:
+    - https://github.com/doccaz/harvester-extra-dashboards/releases/download/harvester-extra-dashboards-0.4.14/harvester-extra-dashboards-0.4.14.tgz
+    version: 0.4.14
+  - apiVersion: v2
+    appVersion: 1.8.2
     created: "2026-11-18T20:26:22.559359505Z"
     description: Community dashboards and alerts for Harvester / SUSE Virtualization
       on the built-in rancher-monitoring stack (VM contention, detail, right-sizing,
@@ -409,4 +433,4 @@ entries:
     urls:
     - https://github.com/doccaz/harvester-extra-dashboards/releases/download/harvester-extra-dashboards-0.1.0/harvester-extra-dashboards-0.1.0.tgz
     version: 0.1.0
-generated: "2026-11-18T20:26:22.559420704Z"
+generated: "2026-11-21T10:21:09.719788194Z"
